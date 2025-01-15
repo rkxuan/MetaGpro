@@ -153,7 +153,7 @@ if __name__ == '__main__':
     # seed_everything not always works
     # the reason here see https://github.com/pyg-team/pytorch_geometric/issues/3175
     # and one solution is to replace edge_index of SparseTensor, but not all function support SparseTensor
-    # so we have tried out best to add seed_everything, and set --task_num=1, then record the average result
+    # so we have tried our best to add seed_everything, then record the average result.
 
     edge_index_0, edge_index_1 = torch.where(adj_ori == 1)
     edge_index =  torch.stack([edge_index_0, edge_index_1], dim=0)
