@@ -1,5 +1,6 @@
 import torch
-from prompt_graph.attack import BaseAttack,Metattack, Metacon_s, Metacon_d, MetaGraD, MetaGpro, MetaGpro_Approx
+from prompt_graph.attack import BaseAttack, Metattack, Metacon_s, Metacon_d, MetaGraD, MetaGpro, MetaGpro_Approx, DICE, AtkSE
+from prompt_graph.defense import prune
 import argparse
 from prompt_graph.utils import edge_adding, edge_dropping, feature_masking, edge_weighted_dropping
 from prompt_graph.data import load4node,load4graph, split_induced_graphs, induced_graphs
@@ -59,11 +60,12 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 if __name__ == '__main__':
-    # Written in 2024/10, based on ProG and Deeprobust
+    # Written in SEU in 2024/10, based on ProG and Deeprobust
     # ProG: https://github.com/sheldonresearch/ProG
     # Deeprobust: http://github.com/DSE-MSU/DeepRobust
 
-    attack_dict = {'base':BaseAttack, 'mettack':Metattack, 'metacon_s':Metacon_s, 'metacon_d':Metacon_d, 'GraD':MetaGraD, 'MetaGpro':MetaGpro, 'MetaGpro_app':MetaGpro_Approx}
+    attack_dict = {'base':BaseAttack, 'mettack':Metattack, 'metacon_s':Metacon_s, 'metacon_d':Metacon_d,  'dice': DICE,
+                   'atkse':AtkSE, 'GraD':MetaGraD, 'MetaGpro':MetaGpro, 'MetaGpro_app':MetaGpro_Approx}
     augmentation_dict = {'edge_dropping':edge_dropping, 'edge_adding':edge_adding, 'feature_masking':feature_masking, "edge_weighted_dropping":edge_weighted_dropping} # define in prompt_graph.utils.simple_augmentation
     prompt_list = ['All-in-one-softmax', 'All-in-one-mean', 'All-in-one','All-in-one-token','GPF', 'GPF-plus', 'Gprompt', 'GPPT', 'MultiGprompt']
     attack_loss_list = ['CE', 'GraD', 'Tanh', 'Bias_Tanh', 'MCE']
@@ -84,7 +86,7 @@ if __name__ == '__main__':
     parser.add_argument('--gln', type=int, default=2)
     parser.add_argument('--num_pretrain_epoch', type=int, default=500)
     parser.add_argument('--pretrain_dataset', type=str, choices=dataset_list, default='PubMed')
-    parser.add_argument('--pre_train_model_file_path', type=str, default='/root/autodl-tmp/MetaGpro/pre_trained_model/')
+    parser.add_argument('--pre_train_model_file_path', type=str, default='/root/autodl-tmp/ProG/pre_trained_model/')
     
 
     # Attack_base
@@ -120,7 +122,8 @@ if __name__ == '__main__':
     parser.add_argument('--surrogate_token_num', type=int, default=10)
     parser.add_argument('--surrogate_prompt', type=str, choices=surrogate_prompt_list, default='Two-views')
     parser.add_argument('--attack_loss', type=str, choices=attack_loss_list, default='CE')
-    parser.add_argument('--lenda', type=float, default=0.0)              # weight for over-robust learning loss
+    parser.add_argument('--lenda_1', type=float, default=0.0)              # weight for two views's similarity loss
+    parser.add_argument('--lenda_2', type=float, default=0.0)              # weight for over-robust learning loss
 
     # downstream task
     parser.add_argument('--labeled_each_class', type=int, default=100)    # random sample and attack many times will cost much, so sample once
@@ -129,8 +132,12 @@ if __name__ == '__main__':
     parser.add_argument('--task_epochs', type=int, default = 500)
     parser.add_argument('--task_lr', type=float, default = 0.001)         
     parser.add_argument('--prompt_type', type=str, choices=prompt_list, default='GPF-plus')
-    parser.add_argument('--shot_folder', type=str, default='/root/autodl-tmp/MetaGpro/Node')
+    parser.add_argument('--shot_folder', type=str, default='/root/autodl-tmp/ProG/Node')
     parser.add_argument('--token_num', type=int, default=10)
+
+
+    # defense task
+    parser.add_argument('--dropout', type=float, default=0.1)
 
     args, _ = parser.parse_known_args()
     
@@ -149,11 +156,12 @@ if __name__ == '__main__':
     data = attack_model.data.to(device)
     adj_ori = attack_model.adj_ori
     
+    # downstream task, and we only focus on NodeTask
     seed_everything(args.seed)           
     # seed_everything not always works
     # the reason here see https://github.com/pyg-team/pytorch_geometric/issues/3175
     # and one solution is to replace edge_index of SparseTensor, but not all function support SparseTensor
-    # so we have tried our best to add seed_everything, then record the average result.
+    # so we have tried out best to add seed_everything, and set --task_num=1, then record the best result
 
     edge_index_0, edge_index_1 = torch.where(adj_ori == 1)
     edge_index =  torch.stack([edge_index_0, edge_index_1], dim=0)
@@ -165,7 +173,7 @@ if __name__ == '__main__':
 
     if args.prompt_type in ['All-in-one-mean','All-in-one-softmax', 'Gprompt','All-in-one','All-in-one-token', 'GPF', 'GPF-plus']:
         graphs_list = load_induced_graph(data, 100, 300, device)
-    else:
+    else:  # I dont know whether other prompt functions can work, but ProG write this code in Tutorial
         graphs_list = None 
 
     tasker = NodeTask(data=data, input_dim=input_dim, output_dim=output_dim, task_num=args.task_num, shot_num=shot_num, 
@@ -177,7 +185,7 @@ if __name__ == '__main__':
 
     _, test_acc_, std_test_acc_, f1_, std_f1_, roc_, std_roc_, _, _, pros, labels = tasker.run()
     # you can use following lines to save the decision margin of training data
-    # pros: softmax(z), you can change the code to log_softmax(z)
+    # pro: softmax(z), you can change the code to log_softmax(z)
     # if pros is not None and labels is not None: 
     #    sorted = pros.argsort(-1)
     #    best_non_target_class = sorted[sorted != labels[:, None]].reshape(pros.size(0), -1)[:, -1]
@@ -205,6 +213,8 @@ if __name__ == '__main__':
             graphs_list = load_induced_graph(data, 100, 300, device)
         else:  # I dont know whether other prompt functions can work, but ProG write this code in Tutorial
             graphs_list = None
+
+        prune(data, args.dropout)
 
         tasker = NodeTask(data=data, input_dim=input_dim, output_dim=output_dim, task_num=args.task_num, shot_num=shot_num, 
                 graphs_list=graphs_list, train_mask=train_mask, shot_folder=args.shot_folder,
