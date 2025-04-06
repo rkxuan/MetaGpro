@@ -139,6 +139,8 @@ class Metacon_s(BaseMeta):
 
         if self.undirected :
             self.n_perturbations = int(self.nedges * budget //2)
+        else:
+            self.n_perturbations = int(self.nedegs * budget)
 
         augmentation_dict = {'edge_dropping':edge_dropping, 'edge_adding':edge_adding, 'feature_masking':feature_masking, "edge_weighted_dropping":edge_weighted_dropping}
         if augmentation not in augmentation_dict:
@@ -169,7 +171,7 @@ class Metacon_s(BaseMeta):
         self.w_velocities.append(output_w_velocity)
 
         if self.with_bias:
-            output_bias = torch.nn.Parameter(torch.FloatTensor(self.nclass).to(self.device))
+            output_bias = torch.nn.Parameter(torch.FloatTensor(self.out_dim).to(self.device))
             output_b_velocity = torch.zeros(output_bias.shape).to(self.device)
             self.biases.append(output_bias)
             self.b_velocities.append(output_b_velocity)
@@ -212,10 +214,9 @@ class Metacon_s(BaseMeta):
 
             output = F.log_softmax(hidden, dim=1)
             loss_labeled = F.nll_loss(output[self.train_mask==1], self.y[self.train_mask==1])
+            loss_labeled.backward()
             optimizer.step()
 
-            
-        
         self.y_self_training = output.argmax(1)
         self.y_self_training[self.train_mask==1] = self.y[self.train_mask==1]
   
@@ -492,6 +493,8 @@ class Metacon_d(BaseMeta):
 
         if self.undirected :
             self.n_perturbations = int(self.nedges * budget //2)
+        else:
+            self.n_perturbations = int(self.nedegs * budget)
 
         augmentation_dict = {'edge_dropping':edge_dropping, 'edge_adding':edge_adding, 'feature_masking':feature_masking, "edge_weighted_dropping":edge_weighted_dropping}
         if augmentation not in augmentation_dict:
@@ -522,7 +525,7 @@ class Metacon_d(BaseMeta):
         self.w_velocities.append(output_w_velocity)
 
         if self.with_bias:
-            output_bias = torch.nn.Parameter(torch.FloatTensor(self.nclass).to(self.device))
+            output_bias = torch.nn.Parameter(torch.FloatTensor(self.out_dim).to(self.device))
             output_b_velocity = torch.zeros(output_bias.shape).to(self.device)
             self.biases.append(output_bias)
             self.b_velocities.append(output_b_velocity)
@@ -565,6 +568,7 @@ class Metacon_d(BaseMeta):
 
             output = F.log_softmax(hidden, dim=1)
             loss_labeled = F.nll_loss(output[self.train_mask==1], self.y[self.train_mask==1])
+            loss_labeled.backward()
             optimizer.step()
 
             

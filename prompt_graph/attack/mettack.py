@@ -166,6 +166,8 @@ class Metattack(BaseMeta):
 
         if self.undirected :
             self.n_perturbations = int(self.nedges * budget //2)
+        else:
+            self.n_perturbations = int(self.nedegs * budget)
 
 
         previous_size = self.input_dim
@@ -190,7 +192,7 @@ class Metattack(BaseMeta):
         self.w_velocities.append(output_w_velocity)
 
         if self.with_bias:
-            output_bias = torch.nn.Parameter(torch.FloatTensor(self.nclass).to(self.device))
+            output_bias = torch.nn.Parameter(torch.FloatTensor(self.out_dim).to(self.device))
             output_b_velocity = torch.zeros(output_bias.shape).to(self.device)
             self.biases.append(output_bias)
             self.b_velocities.append(output_b_velocity)
@@ -522,6 +524,8 @@ class MetaApprox(BaseMeta):
 
         if self.undirected:
             self.n_perturbations = int(self.nedges * budget // 2)
+        else:
+            self.n_perturbations = int(self.nedegs * budget)
 
         previous_size = self.input_dim
         hidden_sizes = [self.hid_dim for i in range(self.num_layer)]

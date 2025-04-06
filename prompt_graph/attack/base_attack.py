@@ -19,7 +19,7 @@ from prompt_graph.attack import PreTrain_task
 class BaseAttack(torch.nn.Module):
     def __init__(self, attack_structure=True, attack_features=False, pretrain_type='GraphMAE', gnn_type='GCN', hid_dim = 128, gln=2, num_pretrain_epoch=500,
     pretrain_dataset='PubMed', target_dim=100, pca=False, target_dataset='Cora', labeled_each_class=100, device='auto',
-    pre_train_model_file_path='/root/autodl-tmp/MetaGpro/pre_trained_model/', ll_constraint=False, *arg, **kwargs):
+    pre_train_model_file_path='/root/autodl-tmp/ProG/pre_trained_model/', ll_constraint=False, *arg, **kwargs):
     
         super(BaseAttack, self).__init__()
 
@@ -73,6 +73,8 @@ class BaseAttack(torch.nn.Module):
         # device has been defined in BaseAttack
         
         #split dataset
+        #"/root/autodl-tmp/ProG/Node/{}/{}_shot/{}/test_idx.pt"
+        #folder = 'root/autodl-tmp/ProG/Node/{}'.format(self.target_dataset)
         self.train_mask, self.val_mask, self.test_mask = split_train_val_test(self.data, self.out_dim, self.labeled_each_class)
 
         # pretrain a model or load

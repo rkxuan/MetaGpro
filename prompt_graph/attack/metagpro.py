@@ -194,7 +194,7 @@ class BasePrompt(BaseAttack):
 class MetaGpro_Approx(BasePrompt):
     def __init__(self, train_iters: int = 100, lr: float = 0.1, momentum: float = 0.9, lambda_: float = 0.5, budget: float = 0.05, 
                 save_fold_path="/root/autodl-tmp/deeprobust", surrogate_token_num=10, surrogate_prompt='Two-views',attack_loss='CE', 
-                aug_ratio=0.2, all_in_one_threshold=0.5, lenda=0.0, vic_coef1=1.0, vic_coef2=1.0, vic_coef3=0.04, *arg, **kwargs):
+                aug_ratio=0.2, all_in_one_threshold=0.5, lenda_1=0.1, lenda_2=0.4, vic_coef1=1.0, vic_coef2=1.0, vic_coef3=0.04, *arg, **kwargs):
         super(MetaGpro_Approx, self).__init__(*arg, **kwargs)
 
         self.momentum = momentum
@@ -219,7 +219,8 @@ class MetaGpro_Approx(BasePrompt):
 
         assert 0 <= lambda_ <= 1, "lambda_ should between 0 and 1"
         self.lambda_ = lambda_  # lambda * label_loss + (1-lambda) * ublabeled
-        self.lenda = lenda  # loss weight for 'Infomax for over-robust enhancement'
+        self.lenda_1 = lenda_1  # loss weight for 'Infomax for agreement maximization'
+        self.lenda_2 = lenda_2  # loss weight for 'Infomax for over-robust enhancement'
         self.vic_coef1 = vic_coef1  # weight for one part in constrative learning loss
         self.vic_coef2 = vic_coef2  # weight for one part in constrative learning loss
         self.vic_coef3 = vic_coef3  # weight for one part in constrative learning loss
@@ -229,6 +230,8 @@ class MetaGpro_Approx(BasePrompt):
 
         if self.undirected:
             self.n_perturbations = int(self.nedges * budget // 2)
+        else:
+            self.n_perturbations = int(self.nedegs * budget)
 
         self.weights = []
 
@@ -245,8 +248,12 @@ class MetaGpro_Approx(BasePrompt):
 
         self._initialize()
 
-    def _initialize(self): # For copyright protection, mask this function
-        pass
+    def _initialize(self):
+
+        for w in self.weights:
+            glorot(w)
+
+        self.optimizer = torch.optim.Adam(self.weights, lr=self.lr)
 
     def self_training(self, features, adj_norm):
 
@@ -281,14 +288,14 @@ class MetaGpro_Approx(BasePrompt):
         self.y_self_training[self.train_mask == 1] = self.y[self.train_mask == 1]
 
         #print(self.train_loss_list)
-        #print(self.train_loss_list)
-        #train_loss = np.array(self.train_loss_list)
-        #folder_path = "./result"
-        #file_path = os.path.join(folder_path, "train_loss_view1_20_num_mean_0.3.npy")
-        #np.save(file_path, train_loss)
+        """print(self.train_loss_list)
+        train_loss = np.array(self.train_loss_list)
+        folder_path = "./result"
+        file_path = os.path.join(folder_path, "train_loss_view1_20_num_mean_0.3.npy")
+        np.save(file_path, train_loss)"""
 
     def inner_train(self, features, modified_adj):
-        #we find momentum in Mettack can't learn prompt well, so we use trick in MetaGpro
+        "we find momentum in Mettack can't learn prompt well, so we use trick in MetaApprox"
 
         adj_norm = self.normalize_adj_tensor(modified_adj)
         viewlearner = PRBCD(features, modified_adj, self.Linearized_GCN, self.surrogate_prompt, self.train_mask, 10000,
@@ -297,9 +304,9 @@ class MetaGpro_Approx(BasePrompt):
                             self.aug_ratio, 0.1)
         for j in range(self.train_iters):
             self.optimizer.zero_grad()
-            hidden = self.surrogate_prompt_forward_func(features, adj_norm)
+            hidden, loss_agreement_infomax = self.surrogate_prompt_forward_func(features, adj_norm)
 
-            if self.lenda > 0.005:
+            if self.lenda_2 > 0.005:
                 weight_datas = []
                 for weight in self.weights:
                     weight_datas.append(weight.data)
@@ -312,7 +319,7 @@ class MetaGpro_Approx(BasePrompt):
             output = F.log_softmax(hidden, dim=1)
 
             loss_CE = F.nll_loss(output[self.train_mask == 1], self.y[self.train_mask == 1])
-            loss_surrogate = loss_CE + self.lenda * loss_cons
+            loss_surrogate = loss_CE + self.lenda_1 * loss_agreement_infomax + self.lenda_2 * loss_cons
 
             loss_labeled = self.attack_loss_func(output, self.y, self.train_mask==1)
             loss_unlabeled = self.attack_loss_func(output, self.y_self_training, self.train_mask==0)
@@ -421,7 +428,7 @@ class MetaGpro_Approx(BasePrompt):
         )
 
         loss1 = torch.tanh(-margin[margin >= 0])
-        loss2 = k * torch.tanh(k * -margin[margin < 0])  # this is better than presented in papar
+        loss2 = k * torch.tanh(1/k * -margin[margin < 0])
         loss = torch.cat([loss1, loss2])
 
         return loss.mean()
@@ -486,7 +493,7 @@ class MetaGpro_Approx(BasePrompt):
         output2= torch.mm(adj_norm, support2)
 
         hidden = output2 @ self.weights[3] + self.weights[4]     
-        return hidden
+        return hidden, 0
 
     def gprompt_gnn_forward(self, features, adj_norm):
         support1 = torch.mm(features, self.weights[1])
@@ -496,7 +503,7 @@ class MetaGpro_Approx(BasePrompt):
         prompted_hidden = output2 * self.weights[0]
 
         hidden = prompted_hidden @ self.weights[3] + self.weights[4]     
-        return hidden
+        return hidden, 0
 
 
     def two_views_forward(self, features, adj_norm):
@@ -507,7 +514,9 @@ class MetaGpro_Approx(BasePrompt):
         prompted_hidden2 = hidden2 * self.weights[1]
 
         hidden = 1 / 2 * (prompted_hidden1 + prompted_hidden2) @ self.weights[2] + self.weights[3]
-        return hidden
+
+        loss_agreement_infomax = F.mse_loss(prompted_hidden1, prompted_hidden2)  # only consider positive example, its no need to push one away from another
+        return hidden, loss_agreement_infomax
 
     def smooth_all_in_one_forward(self, features, adj_norm):
         weight = torch.mm(features, torch.transpose(self.weights[0], 0, 1))     # (n_nodes, token_nums)
@@ -518,7 +527,7 @@ class MetaGpro_Approx(BasePrompt):
         prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
 
         hidden = prompted_hidden @ self.weights[1] + self.weights[2]
-        return hidden
+        return hidden, 0
 
     def sparse_all_in_one_forward(self, features, adj_norm):
         #assert 0.4 <= threshold <= 1, "In Sparse-All-in-one, default 0.4<= threshold <=1"
@@ -537,7 +546,7 @@ class MetaGpro_Approx(BasePrompt):
         prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
 
         hidden = prompted_hidden @ self.weights[1] + self.weights[2]
-        return hidden
+        return hidden, 0
 
     def all_in_one_forward(self, features, adj_norm):
         # use 'sparse all_in_one',which has adventages of speed, flexibility, Stable gradient descent process
@@ -554,7 +563,7 @@ class MetaGpro_Approx(BasePrompt):
         prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
 
         hidden = prompted_hidden @ self.weights[1] + self.weights[2]
-        return hidden
+        return hidden, 0
 
     def gprompt_forward(self, features, adj_norm):
         embeddings = self.Linearized_GCN(features, adj_norm)
@@ -568,7 +577,7 @@ class MetaGpro_Approx(BasePrompt):
         prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
 
         hidden = prompted_hidden @ self.weights[1] + self.weights[2]
-        return hidden
+        return hidden, 0
 
     def gpf_plus_forward(self, features, adj_norm):
         score = features @ self.weights[0]
@@ -580,7 +589,7 @@ class MetaGpro_Approx(BasePrompt):
         prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
 
         hidden = prompted_hidden @ self.weights[2] + self.weights[3]
-        return hidden
+        return hidden, 0
 
     def plot_acc_during_training(self):
         print("Warning: In general, graph Prompt learning converges more slowly than learning of GNNs,so observing acc after fewer iterations is less accurate")
@@ -658,7 +667,7 @@ class MetaGpro_Approx(BasePrompt):
 class MetaGpro(BasePrompt):
     def __init__(self, train_iters: int = 100, lr: float = 0.01, lambda_: float = 0.5,budget: float = 0.05, 
                 save_fold_path="/root/autodl-tmp/deeprobust", surrogate_token_num=10, surrogate_prompt='Two-views',attack_loss='CE', 
-                aug_ratio=0.2, all_in_one_threshold=0.5, lenda=0.0, vic_coef1=1.0, vic_coef2=1.0,
+                aug_ratio=0.2, all_in_one_threshold=0.5,  lenda_1=0.0, lenda_2=0.4, vic_coef1=1.0, vic_coef2=1.0,
                 vic_coef3=0.04, *arg, **kwargs):
         super(MetaGpro, self).__init__(*arg, **kwargs)
 
@@ -685,7 +694,8 @@ class MetaGpro(BasePrompt):
 
         assert 0 <= lambda_ <= 1, "lambda_ should between 0 and 1"
         self.lambda_ = lambda_  # lambda * label_loss + (1-lambda) * ublabeled
-        self.lenda = lenda  # loss weight for 'Infomax for over-robust enhancement'
+        self.lenda_1 = lenda_1  # loss weight for 'Infomax for agreement maximization'
+        self.lenda_2 = lenda_2  # loss weight for 'Infomax for over-robust enhancement'
         self.vic_coef1 = vic_coef1  # weight for one part in constrative learning loss
         self.vic_coef2 = vic_coef2  # weight for one part in constrative learning loss
         self.vic_coef3 = vic_coef3  # weight for one part in constrative learning loss
@@ -695,6 +705,8 @@ class MetaGpro(BasePrompt):
 
         if self.undirected:
             self.n_perturbations = int(self.nedges * budget // 2)
+        else:
+            self.n_perturbations = int(self.nedegs * budget)
 
         self.weights = []
 
@@ -718,12 +730,18 @@ class MetaGpro(BasePrompt):
 
         self._initialize()
 
-    def _initialize(self): # For copyright protection, mask this function
-        pass
+    def _initialize(self):
+        
+        for w, m, v in zip(self.weights, self.weights_m, self.weights_v):
+            glorot(w)
+            m.data.fill_(0)
+            v.data.fill_(0)
 
-    def cut_initialize(self): # For copyright protection, mask this function  
-        # If the beginning of inner training is not stable, use this func
-        pass
+    def cut_initialize(self):   # If the beginning of inner training is not stable, use this func
+        for w, c, m, v in zip(self.weights,self.weights_cut, self.weights_m, self.weights_v):
+            w = c
+            m.data.fill_(0)
+            v.data.fill_(0)
 
     def self_training(self, features, modified_adj):
         self._initialize()
@@ -764,15 +782,15 @@ class MetaGpro(BasePrompt):
         self.y_self_training[self.train_mask == 1] = self.y[self.train_mask == 1]
 
         #print(self.train_loss_list)
-        #print(self.train_loss_list)
-        #train_loss = np.array(self.train_loss_list)
-        #folder_path = "./result"
-        #file_path = os.path.join(folder_path, "train_loss_view1_20_num_mean_0.3.npy")
-        #np.save(file_path, train_loss)
+        """print(self.train_loss_list)
+        train_loss = np.array(self.train_loss_list)
+        folder_path = "./result"
+        file_path = os.path.join(folder_path, "train_loss_view1_20_num_mean_0.3.npy")
+        np.save(file_path, train_loss)"""
 
     def inner_train(self, features, modified_adj):
-        # we find momentum in Mettack can't learn prompt well, so we use trick in MetaGpro
-        # self._initialize()
+        "we find momentum in Mettack can't learn prompt well, so we use trick in MetaApprox"
+        #self._initialize()
         self.cut_initialize()
         adj_norm = self.normalize_adj_tensor(modified_adj)
         iter_ = 0
@@ -790,9 +808,9 @@ class MetaGpro(BasePrompt):
             self.weights_v[ix].requires_grad = True
 
         for j in range(self.train_iters):
-            hidden = self.surrogate_prompt_forward_func(features, adj_norm)
+            hidden, loss_agreement_infomax = self.surrogate_prompt_forward_func(features, adj_norm)
 
-            if self.lenda > 0.005:
+            if self.lenda_2 > 0.005:
                 weight_datas = []
                 for weight in self.weights:
                     weight_datas.append(weight.data)
@@ -806,7 +824,7 @@ class MetaGpro(BasePrompt):
 
             loss_labeled = F.nll_loss(output[self.train_mask == 1], self.y[self.train_mask == 1])
             loss_unlabeled = F.nll_loss(output[self.train_mask == 0], self.y_self_training[self.train_mask == 0])
-            loss_surrogate = loss_labeled + self.lenda * loss_cons
+            loss_surrogate = loss_labeled + self.lenda_1 * loss_agreement_infomax + self.lenda_2 * loss_cons
             
             iter_ += 1
             lr_t = self.lr * math.sqrt(1.0 - self.beta2**iter_) / (1.0 - self.beta1**iter_)
@@ -1001,7 +1019,7 @@ class MetaGpro(BasePrompt):
         output2= torch.mm(adj_norm, support2)
 
         hidden = output2 @ self.weights[3] + self.weights[4]     
-        return hidden
+        return hidden, 0
 
     def gprompt_gnn_forward(self, features, adj_norm):
         support1 = torch.mm(features, self.weights[1])
@@ -1011,7 +1029,7 @@ class MetaGpro(BasePrompt):
         prompted_hidden = output2 * self.weights[0]
 
         hidden = prompted_hidden @ self.weights[3] + self.weights[4]     
-        return hidden
+        return hidden, 0
 
 
     def two_views_forward(self, features, adj_norm):
@@ -1022,7 +1040,9 @@ class MetaGpro(BasePrompt):
         prompted_hidden2 = hidden2 * self.weights[1]
 
         hidden = 1 / 2 * (prompted_hidden1 + prompted_hidden2) @ self.weights[2] + self.weights[3]
-        return hidden
+
+        loss_agreement_infomax = F.mse_loss(prompted_hidden1, prompted_hidden2)  # only consider positive example, its no need to push one away from another
+        return hidden, loss_agreement_infomax
 
     def smooth_all_in_one_forward(self, features, adj_norm):
         weight = torch.mm(features, torch.transpose(self.weights[0], 0, 1))     # (n_nodes, token_nums)
@@ -1033,7 +1053,7 @@ class MetaGpro(BasePrompt):
         prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
 
         hidden = prompted_hidden @ self.weights[1] + self.weights[2]
-        return hidden
+        return hidden, 0
         
     def sparse_all_in_one_forward(self, features, adj_norm):
         #assert 0.4 <= threshold <= 1, "In All-in-one-mean, default 0.4<= threshold <=1"
@@ -1053,7 +1073,7 @@ class MetaGpro(BasePrompt):
         prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
 
         hidden = prompted_hidden @ self.weights[1] + self.weights[2]
-        return hidden
+        return hidden, 0
 
     def all_in_one_forward(self, features, adj_norm):
         # use 'sparse all_in_one',which has adventages of speed, flexibility, Stable gradient descent process
@@ -1070,21 +1090,21 @@ class MetaGpro(BasePrompt):
         prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
 
         hidden = prompted_hidden @ self.weights[1] + self.weights[2]
-        return hidden
+        return hidden, 0
 
     def gprompt_forward(self, features, adj_norm):
         embeddings = self.Linearized_GCN(features, adj_norm)
         prompted_hidden = embeddings * self.weights[0]
 
         hidden = prompted_hidden @ self.weights[1] + self.weights[2]
-        return hidden
+        return hidden, 0
 
     def gpf_forward(self, features, adj_norm):
         prompted_features = features + self.weights[0]
         prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
 
         hidden = prompted_hidden @ self.weights[1] + self.weights[2]
-        return hidden
+        return hidden, 0
 
     def gpf_plus_forward(self, features, adj_norm):
         score = features @ self.weights[0]
@@ -1096,7 +1116,7 @@ class MetaGpro(BasePrompt):
         prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
 
         hidden = prompted_hidden @ self.weights[2] + self.weights[3]
-        return hidden
+        return hidden, 0
 
     def plot_acc_during_training(self):
         print("Warning: In general, graph Prompt learning converges more slowly than learning of GNNs,so observing acc after fewer iterations is less accurate")
@@ -1193,6 +1213,7 @@ def Test():
             #model.visualize_topology_attack_influence()
     #model.visualize_topology_attack_tendency()
     #model.plot_acc_during_training()
+
 
 if __name__ == '__main__':
     Test()

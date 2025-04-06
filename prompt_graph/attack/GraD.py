@@ -60,7 +60,6 @@ class BaseMeta(BaseAttack):
         flat_mask = 1 - l_and
         return flat_mask
     
-
     """
     def self_training_label(self, output):
         # 这个可以改, 比如过滤低置信度的
@@ -69,7 +68,6 @@ class BaseMeta(BaseAttack):
         return labels_self_training
     """
 
-        
     def get_adj_score(self, adj_grad, modified_adj):
         adj_meta_grad = adj_grad * (-2 * modified_adj + 1)
         # Make sure that the minimum entry is 0.
@@ -79,8 +77,6 @@ class BaseMeta(BaseAttack):
         # # Set entries to 0 that could lead to singleton nodes.
         singleton_mask = self.filter_potential_singletons(modified_adj)
         adj_meta_grad = adj_meta_grad * singleton_mask
-
-    
         return adj_meta_grad
     
 
@@ -99,7 +95,6 @@ class BaseMeta(BaseAttack):
         adj_norm = D_mat_inv @ adj @ D_mat_inv   # GCN的归一化方式
         return adj_norm
 
-
     def save_adj(self, attack_name='GraD'):
 
         assert self.modified_adj is not None, \
@@ -110,7 +105,6 @@ class BaseMeta(BaseAttack):
         modified_adj = self.get_modified_adj().cpu().clone()
 
         torch.save(modified_adj, os.path.join(self.save_fold_path, name))
-
 
     def save_feature(self, attack_name='GraD'):
 
@@ -156,7 +150,8 @@ class MetaGraD(BaseMeta):
 
         if self.undirected :
             self.n_perturbations = int(self.nedges * budget //2)
-
+        else:
+            self.n_perturbations = int(self.nedegs * budget)
 
         previous_size = self.input_dim
         hidden_sizes = [self.hid_dim for i in range(self.num_layer)]
@@ -180,7 +175,7 @@ class MetaGraD(BaseMeta):
         self.w_velocities.append(output_w_velocity)
 
         if self.with_bias:
-            output_bias = torch.nn.Parameter(torch.FloatTensor(self.nclass).to(self.device))
+            output_bias = torch.nn.Parameter(torch.FloatTensor(self.out_dim).to(self.device))
             output_b_velocity = torch.zeros(output_bias.shape).to(self.device)
             self.biases.append(output_bias)
             self.b_velocities.append(output_b_velocity)
@@ -223,10 +218,9 @@ class MetaGraD(BaseMeta):
 
             output = F.log_softmax(hidden, dim=1)
             loss_labeled = F.nll_loss(output[self.train_mask==1], self.y[self.train_mask==1])
+            loss_labeled.backward()
             optimizer.step()
 
-            
-        
         self.y_self_training = output.argmax(1)
         self.y_self_training[self.train_mask==1] = self.y[self.train_mask==1]
   

@@ -5,5 +5,7 @@ from .metacon import Metacon_s, Metacon_d
 from .GraD import MetaGraD
 from .prbcd import PRBCD
 from .metagpro import MetaGpro_Approx, MetaGpro
+from .dice import DICE
+from .atkse import AtkSE
 
 
