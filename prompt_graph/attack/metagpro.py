@@ -486,110 +486,33 @@ class MetaGpro_Approx(BasePrompt):
         self.surrogate_prompt_forward_func = forward_func_dict[surrogate_prompt]
     
     def gpf_gnn_forward(self, features, adj_norm):
-        prompted_features = features + self.weights[0]
-        support1 = torch.mm(prompted_features, self.weights[1])
-        output1 = torch.mm(adj_norm, support1)      
-        support2 = torch.mm(output1, self.weights[2])
-        output2= torch.mm(adj_norm, support2)
-
-        hidden = output2 @ self.weights[3] + self.weights[4]     
-        return hidden, 0
+        pass
 
     def gprompt_gnn_forward(self, features, adj_norm):
-        support1 = torch.mm(features, self.weights[1])
-        output1 = torch.mm(adj_norm, support1)      
-        support2 = torch.mm(output1, self.weights[2])
-        output2= torch.mm(adj_norm, support2)
-        prompted_hidden = output2 * self.weights[0]
-
-        hidden = prompted_hidden @ self.weights[3] + self.weights[4]     
-        return hidden, 0
+        pass
 
 
     def two_views_forward(self, features, adj_norm):
-        prompted_features = features + self.weights[0]
-        hidden2 = self.Linearized_GCN(features, adj_norm)
-
-        prompted_hidden1 = self.Linearized_GCN(prompted_features, adj_norm)
-        prompted_hidden2 = hidden2 * self.weights[1]
-
-        hidden = 1 / 2 * (prompted_hidden1 + prompted_hidden2) @ self.weights[2] + self.weights[3]
-
-        loss_agreement_infomax = F.mse_loss(prompted_hidden1, prompted_hidden2)  # only consider positive example, its no need to push one away from another
-        return hidden, loss_agreement_infomax
+        pass
 
     def smooth_all_in_one_forward(self, features, adj_norm):
-        weight = torch.mm(features, torch.transpose(self.weights[0], 0, 1))     # (n_nodes, token_nums)
-        weight = torch.softmax(weight, dim=1)
-        weighted_prompt_tokens = torch.mm(weight, self.weights[0])    # (n_nodes, input_dim)
-
-        prompted_features = features  + weighted_prompt_tokens
-        prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
-
-        hidden = prompted_hidden @ self.weights[1] + self.weights[2]
-        return hidden, 0
+        pass
 
     def sparse_all_in_one_forward(self, features, adj_norm):
-        #assert 0.4 <= threshold <= 1, "In Sparse-All-in-one, default 0.4<= threshold <=1"
-        weight = torch.mm(features, torch.transpose(self.weights[0], 0, 1))  # (n_nodes, token_nums)
-        weight = torch.sigmoid(weight)
-        mask = weight < self.all_in_one_threshold
-        masked_weight = weight.masked_fill(mask, 0)  # (n_nodes, token_nums)
-        weighted_prompt_tokens = torch.mm(masked_weight, self.weights[0])  # (n_nodes, input_dim)
+        pass
 
-        # the prompted function in "All in one" is x' = x + sum(pk)
-        # and we found in surrogate module, change it to x' = x + mean(pk) is more stable in learning
-        # we guess the reason behind this phenomenon is if token_num is large, then x' is far away from x at beginning
-        # prompted_features = features + weighted_prompt_tokens
-        prompted_features = features + 1 / self.token_num * weighted_prompt_tokens
-
-        prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
-
-        hidden = prompted_hidden @ self.weights[1] + self.weights[2]
-        return hidden, 0
 
     def all_in_one_forward(self, features, adj_norm):
-        # use 'sparse all_in_one',which has adventages of speed, flexibility, Stable gradient descent process
-        #assert 0 <= threshold <= 1, "please set 0<=threshold<=1"
-
-        weight = torch.mm(features, torch.transpose(self.weights[0], 0, 1))  # (n_nodes, token_nums)
-        weight = torch.sigmoid(weight)
-        mask = weight < self.all_in_one_threshold
-        masked_weight = weight.masked_fill(mask, 0)  # (n_nodes, token_nums)
-        weighted_prompt_tokens = torch.mm(masked_weight, self.weights[0])  # (n_nodes, input_dim)
-
-        prompted_features = features + weighted_prompt_tokens
-
-        prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
-
-        hidden = prompted_hidden @ self.weights[1] + self.weights[2]
-        return hidden, 0
+        pass
 
     def gprompt_forward(self, features, adj_norm):
-        embeddings = self.Linearized_GCN(features, adj_norm)
-        prompted_hidden = embeddings * self.weights[0]
-
-        hidden = prompted_hidden @ self.weights[1] + self.weights[2]
-        return hidden, 0
+        pass
 
     def gpf_forward(self, features, adj_norm):
-        prompted_features = features + self.weights[0]
-        prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
-
-        hidden = prompted_hidden @ self.weights[1] + self.weights[2]
-        return hidden, 0
+        pass
 
     def gpf_plus_forward(self, features, adj_norm):
-        score = features @ self.weights[0]
-        weight = F.softmax(score, dim=1)
-        p = weight.mm(self.weights[1])
-
-        prompted_features = features + p
-
-        prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
-
-        hidden = prompted_hidden @ self.weights[2] + self.weights[3]
-        return hidden, 0
+        pass
 
     def plot_acc_during_training(self):
         print("Warning: In general, graph Prompt learning converges more slowly than learning of GNNs,so observing acc after fewer iterations is less accurate")
@@ -1010,113 +933,33 @@ class MetaGpro(BasePrompt):
                              'GPF-GNN': self.gpf_gnn_forward, 'Gprompt-GNN': self.gprompt_gnn_forward}
 
         self.surrogate_prompt_forward_func = forward_func_dict[surrogate_prompt]
-    
-    def gpf_gnn_forward(self, features, adj_norm):
-        prompted_features = features + self.weights[0]
-        support1 = torch.mm(prompted_features, self.weights[1])
-        output1 = torch.mm(adj_norm, support1)      
-        support2 = torch.mm(output1, self.weights[2])
-        output2= torch.mm(adj_norm, support2)
 
-        hidden = output2 @ self.weights[3] + self.weights[4]     
-        return hidden, 0
+    def gpf_gnn_forward(self, features, adj_norm):
+        pass
 
     def gprompt_gnn_forward(self, features, adj_norm):
-        support1 = torch.mm(features, self.weights[1])
-        output1 = torch.mm(adj_norm, support1)      
-        support2 = torch.mm(output1, self.weights[2])
-        output2= torch.mm(adj_norm, support2)
-        prompted_hidden = output2 * self.weights[0]
-
-        hidden = prompted_hidden @ self.weights[3] + self.weights[4]     
-        return hidden, 0
-
+        pass
 
     def two_views_forward(self, features, adj_norm):
-        prompted_features = features + self.weights[0]
-        hidden2 = self.Linearized_GCN(features, adj_norm)
-
-        prompted_hidden1 = self.Linearized_GCN(prompted_features, adj_norm)
-        prompted_hidden2 = hidden2 * self.weights[1]
-
-        hidden = 1 / 2 * (prompted_hidden1 + prompted_hidden2) @ self.weights[2] + self.weights[3]
-
-        loss_agreement_infomax = F.mse_loss(prompted_hidden1, prompted_hidden2)  # only consider positive example, its no need to push one away from another
-        return hidden, loss_agreement_infomax
+        pass
 
     def smooth_all_in_one_forward(self, features, adj_norm):
-        weight = torch.mm(features, torch.transpose(self.weights[0], 0, 1))     # (n_nodes, token_nums)
-        weight = torch.softmax(weight, dim=1)
-        weighted_prompt_tokens = torch.mm(weight, self.weights[0])    # (n_nodes, input_dim)
+        pass
 
-        prompted_features = features  + weighted_prompt_tokens
-        prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
-
-        hidden = prompted_hidden @ self.weights[1] + self.weights[2]
-        return hidden, 0
-        
     def sparse_all_in_one_forward(self, features, adj_norm):
-        #assert 0.4 <= threshold <= 1, "In All-in-one-mean, default 0.4<= threshold <=1"
-
-        weight = torch.mm(features, torch.transpose(self.weights[0], 0, 1))  # (n_nodes, token_nums)
-        weight = torch.sigmoid(weight)
-        mask = weight < self.all_in_one_threshold
-        masked_weight = weight.masked_fill(mask, 0)  # (n_nodes, token_nums)
-        weighted_prompt_tokens = torch.mm(masked_weight, self.weights[0])  # (n_nodes, input_dim)
-
-        # the prompted function in "All in one" is x' = x + sum(pk)
-        # and we found in surrogate module, change it to x' = x + mean(pk) is more stable in learning
-        # we guess the reason behind this phenomenon is if token_num is large, then x' is far away from x at beginning
-        # prompted_features = features + weighted_prompt_tokens
-        prompted_features = features + 1 / self.token_num * weighted_prompt_tokens
-
-        prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
-
-        hidden = prompted_hidden @ self.weights[1] + self.weights[2]
-        return hidden, 0
+        pass
 
     def all_in_one_forward(self, features, adj_norm):
-        # use 'sparse all_in_one',which has adventages of speed, flexibility, Stable gradient descent process
-        #assert 0 <= threshold <= 1, "please set 0<=threshold<=1"
-
-        weight = torch.mm(features, torch.transpose(self.weights[0], 0, 1))  # (n_nodes, token_nums)
-        weight = torch.sigmoid(weight)
-        mask = weight < self.all_in_one_threshold
-        masked_weight = weight.masked_fill(mask, 0)  # (n_nodes, token_nums)
-        weighted_prompt_tokens = torch.mm(masked_weight, self.weights[0])  # (n_nodes, input_dim)
-
-        prompted_features = features + weighted_prompt_tokens
-
-        prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
-
-        hidden = prompted_hidden @ self.weights[1] + self.weights[2]
-        return hidden, 0
+        pass
 
     def gprompt_forward(self, features, adj_norm):
-        embeddings = self.Linearized_GCN(features, adj_norm)
-        prompted_hidden = embeddings * self.weights[0]
-
-        hidden = prompted_hidden @ self.weights[1] + self.weights[2]
-        return hidden, 0
+        pass
 
     def gpf_forward(self, features, adj_norm):
-        prompted_features = features + self.weights[0]
-        prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
-
-        hidden = prompted_hidden @ self.weights[1] + self.weights[2]
-        return hidden, 0
+        pass
 
     def gpf_plus_forward(self, features, adj_norm):
-        score = features @ self.weights[0]
-        weight = F.softmax(score, dim=1)
-        p = weight.mm(self.weights[1])
-
-        prompted_features = features + p
-
-        prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
-
-        hidden = prompted_hidden @ self.weights[2] + self.weights[3]
-        return hidden, 0
+        pass
 
     def plot_acc_during_training(self):
         print("Warning: In general, graph Prompt learning converges more slowly than learning of GNNs,so observing acc after fewer iterations is less accurate")
