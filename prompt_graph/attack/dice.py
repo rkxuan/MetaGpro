@@ -21,6 +21,8 @@ class DICE(BaseAttack):
         super(DICE, self).__init__(*arg, **kwargs)
         if self.undirected:
             self.n_perturbations = int(self.nedges * budget //2)
+        else:
+            self.n_perturbations = int(self.nedges * budget)
 
 
     def attack(self):

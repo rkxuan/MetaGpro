@@ -58,14 +58,14 @@ class BaseAttack(torch.nn.Module):
             self.pca = pca
             self.transform_feature_dim()
 
-        if target_dataset in ['PubMed']:
+        if target_dataset in ['PubMed', 'Reddit', 'CoraFull']:
             # PubMed is such a big dataset, so we sample 5k nodes
             self.data = sample_dataset(self.data, self.out_dim, self.labeled_each_class, 5000)
-        elif target_dataset in ['Computers', 'Photo']:
+        elif target_dataset in ['Computers', 'Photo', 'DBLP']:
             self.data = sample_dataset(self.data, self.out_dim, self.labeled_each_class, 3000)
  
 
-        if target_dataset in ['PubMed', 'CiteSeer', 'Cora', 'Computers', 'Photo']:
+        if target_dataset in ['PubMed', 'CiteSeer', 'Cora', 'Computers', 'Photo', 'CoraFull']:
             self.undirected = True
         else:           
             self.undirected = False

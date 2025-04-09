@@ -140,7 +140,7 @@ class Metacon_s(BaseMeta):
         if self.undirected :
             self.n_perturbations = int(self.nedges * budget //2)
         else:
-            self.n_perturbations = int(self.nedegs * budget)
+            self.n_perturbations = int(self.nedges * budget)
 
         augmentation_dict = {'edge_dropping':edge_dropping, 'edge_adding':edge_adding, 'feature_masking':feature_masking, "edge_weighted_dropping":edge_weighted_dropping}
         if augmentation not in augmentation_dict:
@@ -494,7 +494,7 @@ class Metacon_d(BaseMeta):
         if self.undirected :
             self.n_perturbations = int(self.nedges * budget //2)
         else:
-            self.n_perturbations = int(self.nedegs * budget)
+            self.n_perturbations = int(self.nedges * budget)
 
         augmentation_dict = {'edge_dropping':edge_dropping, 'edge_adding':edge_adding, 'feature_masking':feature_masking, "edge_weighted_dropping":edge_weighted_dropping}
         if augmentation not in augmentation_dict:

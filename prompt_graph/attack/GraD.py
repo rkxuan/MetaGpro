@@ -151,7 +151,7 @@ class MetaGraD(BaseMeta):
         if self.undirected :
             self.n_perturbations = int(self.nedges * budget //2)
         else:
-            self.n_perturbations = int(self.nedegs * budget)
+            self.n_perturbations = int(self.nedges * budget)
 
         previous_size = self.input_dim
         hidden_sizes = [self.hid_dim for i in range(self.num_layer)]
