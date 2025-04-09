@@ -60,7 +60,6 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 if __name__ == '__main__':
-    # Written in SEU in 2024/10, based on ProG and Deeprobust
     # ProG: https://github.com/sheldonresearch/ProG
     # Deeprobust: http://github.com/DSE-MSU/DeepRobust
 
