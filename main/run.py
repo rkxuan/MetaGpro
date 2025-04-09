@@ -60,7 +60,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 if __name__ == '__main__':
-    # Written in 2024/10, based on ProG and Deeprobust
+    # Written in SEU in 2024/10, based on ProG and Deeprobust
     # ProG: https://github.com/sheldonresearch/ProG
     # Deeprobust: http://github.com/DSE-MSU/DeepRobust
 
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     attack_loss_list = ['CE', 'GraD', 'Tanh', 'Bias_Tanh', 'MCE']
     surrogate_prompt_list = ['Two-views', 'All-in-one-mean', 'All-in-one-softmax', 'All-in-one', 'GPF', 'GPF-plus', 'Gprompt', 'GPF-GNN', 'Gprompt-GNN']   # Sparse-All-in-one is the All-in-one-mean in the paper
     model_list = ['GCN', 'GIN', 'GAT', "GraphTransformer"]  # define model in prompt_graph.model 
-    dataset_list = ['PubMed', 'CiteSeer', 'Cora', 'Computers', 'Photo']  # define dataset by prompt_graph.load4data.load4node_sparse function
+    dataset_list = ['PubMed', 'CiteSeer', 'Cora', 'Computers', 'Photo', 'DBLP', 'CoraFull']  # define dataset by prompt_graph.load4data.load4node_sparse function
     pretrain_list = ['GraphCL', 'SimGRACE','GraphMAE', 'DGI', 'ADGCL']
 
 
@@ -214,7 +214,7 @@ if __name__ == '__main__':
         else:  # I dont know whether other prompt functions can work, but ProG write this code in Tutorial
             graphs_list = None
 
-        prune(data, args.dropout)
+        #prune(data, args.dropout)
 
         tasker = NodeTask(data=data, input_dim=input_dim, output_dim=output_dim, task_num=args.task_num, shot_num=shot_num, 
                 graphs_list=graphs_list, train_mask=train_mask, shot_folder=args.shot_folder,
