@@ -2,7 +2,7 @@ import torch
 import pickle as pk
 from random import shuffle
 import random
-from torch_geometric.datasets import Planetoid, Amazon, Reddit, WikiCS, Flickr, WebKB, Actor, PolBlogs
+from torch_geometric.datasets import Planetoid, Amazon, Reddit, WikiCS, Flickr, WebKB, Actor, PolBlogs, CitationFull
 from torch_geometric.datasets import TUDataset
 import torch_geometric.transforms as T
 from torch_geometric.utils import to_undirected
@@ -199,6 +199,12 @@ def load4node(dataname):
         data = dataset[0]
         input_dim = dataset.num_features
         out_dim = dataset.num_classes
+    elif dataname in ['DBLP', 'CoraFull']:
+        dataname = 'Cora' if dataname=='CoraFull' else dataname
+        dataset = CitationFull(root='/root/autodl-tmp/CitationFull', name=dataname, transform=transform)
+        data = dataset[0]
+        input_dim = dataset.num_features
+        out_dim = dataset.num_classes
     elif dataname in ['Computers', 'Photo']:
         transform = T.Compose(Undirected_transform_list)
         dataset = Amazon(root='/root/autodl-tmp/amazon', name=dataname,transform=transform)
@@ -259,6 +265,13 @@ def load4node_to_sparse(dataname):
         data = dataset[0]
         input_dim = dataset.num_features
         out_dim = dataset.num_classes
+    elif dataname in ['DBLP', 'CoraFull']:
+        dataname = 'Cora' if dataname=='CoraFull' else dataname
+        transform = T.Compose(Undirected_transform_list)
+        dataset = CitationFull(root='/root/autodl-tmp/CitationFull', name=dataname, transform=transform)
+        data = dataset[0]
+        input_dim = dataset.num_features
+        out_dim = dataset.num_classes
     elif dataname in ['Computers', 'Photo']:
         transform = T.Compose(Undirected_transform_list)
         dataset = Amazon(root='/root/autodl-tmp/amazon', name=dataname, transform=transform)
@@ -269,7 +282,6 @@ def load4node_to_sparse(dataname):
         transform = T.Compose(Undirected_transform_list)
         dataset = PolBlogs(root='/root/autodl-tmp/PolBlogs', transform=transform)
         data = dataset[0]
-        print(data)
         input_dim = dataset.num_features
         out_dim = dataset.num_classes
     elif dataname == 'Reddit':
