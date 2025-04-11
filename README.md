@@ -8,29 +8,38 @@ We refer to the <ins>DeepRobust</ins> library to build our attack baselines **sr
 
 We refer to the <ins>ProG</ins> library to build our GPL scenarios **src/**. [https://github.com/sheldonresearch/ProG](https://github.com/sheldonresearch/ProG).
 
+
+## Basic Environment
+* `CUDA == 12.1`
+* `python == 3.10` 
+* `PyTorch == 2.1.0`
+
+
 ## Dataset
 
 We use seven widely used benchmark datasets: Cora, CoraFull, CiteSeer, PubMed, Computers, Photo, DBLP
 
-## Structure
+## Code Structure
 
-prompt_graph/attack: various meta-gradient attacks and our MetaGpro
+main/run.py: The definition of main() function to run the experiments
 
-prompt_graph/data: the dataset and how to load graph as pytorch tensor
+prompt_graph/attack: Various meta-gradient attacks and our MetaGpro
 
-prompt_graph/defense: the defense strategy (i.e. PruneG)
+prompt_graph/data: The graphic datasets and how to load graph as pytorch tensor
 
-prompt_graph/evaluation: the evaluator
+prompt_graph/defense: The defense strategy (i.e. PruneG)
 
-prompt_graph/model: the graph encoders
+prompt_graph/evaluation: The evaluator for GPL tasks
 
-prompt_graph/pretrain: pretraining models
+prompt_graph/model: The graph encoders
 
-prompt_graph/prompt: graph prompt paradigms
+prompt_graph/pretrain: Pretraining models
+
+prompt_graph/prompt: Graph prompt paradigms
 
 prompt_graph/tasker: GPL tasks
 
-prompt_graph/utils: other needed functions or classes
+prompt_graph/utils: Other needed functions or classes
 
 ## Implementation  
 
