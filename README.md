@@ -14,9 +14,9 @@ We use seven widely used benchmark datasets: Cora, CoraFull, CiteSeer, PubMed, C
 
 ## Structure
 
-prompt_graph/attack: various meta-gradient attacks and out MetaGpro
+prompt_graph/attack: various meta-gradient attacks and our MetaGpro
 
-prompt_graph/data: the dataset and how to load graph as tensor
+prompt_graph/data: the dataset and how to load graph as pytorch tensor
 
 prompt_graph/defense: the defense strategy (i.e. PruneG)
 
