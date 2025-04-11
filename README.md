@@ -15,13 +15,21 @@ We use seven widely used benchmark datasets: Cora, CoraFull, CiteSeer, PubMed, C
 ## Structure
 
 prompt_graph/attack: various meta-gradient attacks and out MetaGpro
+
 prompt_graph/data: the dataset and how to load graph as tensor
+
 prompt_graph/defense: the defense strategy (i.e. PruneG)
+
 prompt_graph/evaluation: the evaluator
+
 prompt_graph/model: the graph encoders
+
 prompt_graph/pretrain: pretraining models
+
 prompt_graph/prompt: graph prompt paradigms
+
 prompt_graph/tasker: GPL tasks
+
 prompt_graph/utils: other needed functions or classes
 
 ## Implementation  
