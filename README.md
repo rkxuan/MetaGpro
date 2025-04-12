@@ -4,14 +4,14 @@ This is the official implementation of "Prompt as a Double-Edged Sword: A Dynami
 
 We will further fix the bugs, update the more robustness tests of GPL scenarios in the future.
 
-We refer to the <ins>DeepRobust</ins> library to build our attack baselines **src/**. [https://github.com/DSE-MSU/DeepRobust](https://github.com/DSE-MSU/DeepRobust).
+We refer to the <ins>DeepRobust</ins> library to build our attack baselines **src/** [https://github.com/DSE-MSU/DeepRobust](https://github.com/DSE-MSU/DeepRobust).
 
-We refer to the <ins>ProG</ins> library to build our GPL scenarios **src/**. [https://github.com/sheldonresearch/ProG](https://github.com/sheldonresearch/ProG).
+We refer to the <ins>ProG</ins> library to build our GPL scenarios **src/** [https://github.com/sheldonresearch/ProG](https://github.com/sheldonresearch/ProG).
 
 
 ## Basic Environment
 * `CUDA == 12.1`
-* `python == 3.10` 
+* `Python == 3.10` 
 * `PyTorch == 2.1.0`
 
 
