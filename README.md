@@ -49,6 +49,6 @@ Mettack: !python main/run.py --pretrain_type=GraphMAE --gnn_type=GraphTransforme
 
 MetaGpro: !python main/run.py --pretrain_type=GraphMAE --gnn_type=GraphTransformer --pretrain_dataset=PubMed --target_dataset=PubMed --Mettack_type=MetaGpro --surrogate_prompt=GPF
 
-** News
+## News
 
 * 🔥 **[2025/05/15]** MetaGpro has been accepted by [KDD2025](https://kdd2025.kdd.org/).
