@@ -12,10 +12,12 @@ from torchmetrics import Accuracy
 import copy
 import numpy as np
 import matplotlib.pyplot as plt
-from prompt_graph.utils import edge_adding, edge_dropping, feature_masking, edge_weighted_dropping, identity_augmentation, seed_everything, node_centric_homophily, likelihood_ratio_filter
+from prompt_graph.utils import edge_adding, edge_dropping, feature_masking, edge_weighted_dropping, \
+    identity_augmentation, seed_everything, node_centric_homophily, likelihood_ratio_filter
 import random
 from torch_geometric.nn.inits import glorot
 import warnings
+
 
 class BasePrompt(BaseAttack):
     def __init__(self, augmentation_list=[identity_augmentation, edge_dropping, edge_adding, feature_masking], *arg,
@@ -130,11 +132,10 @@ class BasePrompt(BaseAttack):
         else:
             t_possible_edges = np.array((np.ones((self.nnodes, self.nnodes)) - np.eye(self.nnodes)).nonzero()).T
         allowed_mask, current_ratio = likelihood_ratio_filter(t_possible_edges,
-                                                                    modified_adj,
-                                                                    ori_adj, t_d_min,
-                                                                    ll_cutoff, undirected=self.undirected)
+                                                              modified_adj,
+                                                              ori_adj, t_d_min,
+                                                              ll_cutoff, undirected=self.undirected)
         return allowed_mask, current_ratio
-    
 
     def get_adj_score(self, adj_grad, modified_adj):
         adj_meta_grad = adj_grad * (-2 * modified_adj + 1)
@@ -145,9 +146,9 @@ class BasePrompt(BaseAttack):
         # # Set entries to 0 that could lead to singleton nodes.
         singleton_mask = self.filter_potential_singletons(modified_adj)
         adj_meta_grad = adj_meta_grad * singleton_mask
-        
+
         if self.ll_constraint:
-            allowed_mask, _= self.log_likelihood_constraint(modified_adj, self.adj_ori, 0.04)
+            allowed_mask, _ = self.log_likelihood_constraint(modified_adj, self.adj_ori, 0.04)
             allowed_mask = allowed_mask.to(self.device)
             adj_meta_grad = adj_meta_grad * allowed_mask
         return adj_meta_grad
@@ -170,21 +171,20 @@ class BasePrompt(BaseAttack):
     def save_adj(self, attack_name='MetaGpro'):
 
         assert self.modified_adj is not None, \
-                'modified_adj is None! Please perturb the graph first.'
-        
-        name = f"{self.target_dataset}/{attack_name}.{self.budget+'budget'}.{'adj_mod'}.pt"
+            'modified_adj is None! Please perturb the graph first.'
+
+        name = f"{self.target_dataset}/{attack_name}.{self.budget + 'budget'}.{'adj_mod'}.pt"
 
         modified_adj = self.get_modified_adj().cpu().clone()
 
         torch.save(modified_adj, os.path.join(self.save_fold_path, name))
 
-
     def save_feature(self, attack_name='MetaGpro'):
 
         assert self.modified_features is not None, \
-                'modified_adj is None! Please perturb the feature first.'
-        
-        name = f"{self.target_dataset}/{attack_name}.{self.budget+'budget'}.{'feature_mod'}.pt"
+            'modified_adj is None! Please perturb the feature first.'
+
+        name = f"{self.target_dataset}/{attack_name}.{self.budget + 'budget'}.{'feature_mod'}.pt"
 
         modified_features = self.get_modified_features().cpu().clone()
 
@@ -192,9 +192,12 @@ class BasePrompt(BaseAttack):
 
 
 class MetaGpro_Approx(BasePrompt):
-    def __init__(self, train_iters: int = 100, lr: float = 0.1, momentum: float = 0.9, lambda_: float = 0.5, budget: float = 0.05, 
-                save_fold_path="/root/autodl-tmp/deeprobust", surrogate_token_num=10, surrogate_prompt='Two-views',attack_loss='CE', 
-                aug_ratio=0.2, all_in_one_threshold=0.5, lenda_1=0.1, lenda_2=0.4, vic_coef1=1.0, vic_coef2=1.0, vic_coef3=0.04, *arg, **kwargs):
+    def __init__(self, train_iters: int = 100, lr: float = 0.1, momentum: float = 0.9, lambda_: float = 0.5,
+                 budget: float = 0.05,
+                 save_fold_path="/root/autodl-tmp/deeprobust", surrogate_token_num=10, surrogate_prompt='Two-views',
+                 attack_loss='CE',
+                 aug_ratio=0.2, all_in_one_threshold=0.5, lenda_1=0.1, lenda_2=0.4, vic_coef1=1.0, vic_coef2=1.0,
+                 vic_coef3=0.04, *arg, **kwargs):
         super(MetaGpro_Approx, self).__init__(*arg, **kwargs)
 
         self.momentum = momentum
@@ -268,7 +271,7 @@ class MetaGpro_Approx(BasePrompt):
             loss_labeled = F.nll_loss(output[self.train_mask == 1], self.y[self.train_mask == 1])
             loss_labeled.backward()
             self.optimizer.step()
-            
+
             if train_loss_min > loss_labeled:
                 train_loss_min = loss_labeled
                 cnt_wait = 0
@@ -280,14 +283,15 @@ class MetaGpro_Approx(BasePrompt):
         accuracy = Accuracy(num_classes=self.out_dim, task='multiclass').to(self.device)
         labeled_data_acc = accuracy(output[self.train_mask == 1], self.y[self.train_mask == 1]).item()
         unlabeld_data_acc = accuracy(output[self.val_mask == 1], self.y[self.val_mask == 1]).item()
-        print("you can use self-training to judge whether the hyper-parameter settings, such as lr, are reasonable or not")
+        print(
+            "you can use self-training to judge whether the hyper-parameter settings, such as lr, are reasonable or not")
         print("self-training acc on labeld_data:", labeled_data_acc)
         print("self-training acc on val_data:", unlabeld_data_acc)
 
         self.y_self_training = output.argmax(1)
         self.y_self_training[self.train_mask == 1] = self.y[self.train_mask == 1]
 
-        #print(self.train_loss_list)
+        # print(self.train_loss_list)
         """print(self.train_loss_list)
         train_loss = np.array(self.train_loss_list)
         folder_path = "./result"
@@ -310,7 +314,7 @@ class MetaGpro_Approx(BasePrompt):
                 weight_datas = []
                 for weight in self.weights:
                     weight_datas.append(weight.data)
-                if j % 5 ==0:  # 每个循环都forward效率有点低 Forwarding every loop is inefficient
+                if j % 5 == 0:  # 每个循环都forward效率有点低 Forwarding every loop is inefficient
                     viewlearner.viewer_train_forward(weight_datas, hidden.data)
                 loss_cons = viewlearner.viewer_eval_forward(self.weights, hidden)
             else:
@@ -321,10 +325,10 @@ class MetaGpro_Approx(BasePrompt):
             loss_CE = F.nll_loss(output[self.train_mask == 1], self.y[self.train_mask == 1])
             loss_surrogate = loss_CE + self.lenda_1 * loss_agreement_infomax + self.lenda_2 * loss_cons
 
-            loss_labeled = self.attack_loss_func(output, self.y, self.train_mask==1)
-            loss_unlabeled = self.attack_loss_func(output, self.y_self_training, self.train_mask==0)
+            loss_labeled = self.attack_loss_func(output, self.y, self.train_mask == 1)
+            loss_unlabeled = self.attack_loss_func(output, self.y_self_training, self.train_mask == 0)
             attack_loss = self.lambda_ * loss_labeled + (1 - self.lambda_) * loss_unlabeled
-            #print("check:", loss_surrogate)
+            # print("check:", loss_surrogate)
             loss_surrogate.backward(retain_graph=True)
 
             if self.attack_structure:
@@ -428,7 +432,7 @@ class MetaGpro_Approx(BasePrompt):
         )
 
         loss1 = torch.tanh(-margin[margin >= 0])
-        loss2 = k * torch.tanh(1/k * -margin[margin < 0])
+        loss2 = k * torch.tanh(1 / k * -margin[margin < 0])
         loss = torch.cat([loss1, loss2])
 
         return loss.mean()
@@ -445,7 +449,7 @@ class MetaGpro_Approx(BasePrompt):
         gnn_weight2 = None
         if surrogate_prompt == 'Two-views':
             prompt_token1 = torch.nn.Parameter(torch.Tensor(1, self.input_dim).to(self.device))  # "GPF"  tokens
-            prompt_token2 = torch.nn.Parameter(torch.Tensor(1, self.hid_dim).to(self.device))    # "GraphPrompt" tokens
+            prompt_token2 = torch.nn.Parameter(torch.Tensor(1, self.hid_dim).to(self.device))  # "GraphPrompt" tokens
 
         elif surrogate_prompt in ['All-in-one', 'All-in-one-mean', 'All-in-one-softmax']:
             prompt_token1 = torch.nn.Parameter(torch.Tensor(self.token_num, self.input_dim).to(self.device))
@@ -471,40 +475,39 @@ class MetaGpro_Approx(BasePrompt):
             gnn_weight1 = torch.nn.Parameter(torch.Tensor(self.input_dim, self.hid_dim).to(self.device))
             gnn_weight2 = torch.nn.Parameter(torch.Tensor(self.hid_dim, self.hid_dim).to(self.device))
 
-
         self.weights.append(prompt_token1)
 
         for weight in [prompt_token2, gnn_weight1, gnn_weight2]:
             if weight is not None:
                 self.weights.append(weight)
 
-        forward_func_dict = {'Two-views': self.two_views_forward, 'All-in-one': self.all_in_one_forward,'All-in-one-softmax':self.smooth_all_in_one_forward,
+        forward_func_dict = {'Two-views': self.two_views_forward, 'All-in-one': self.all_in_one_forward,
+                             'All-in-one-softmax': self.smooth_all_in_one_forward,
                              'All-in-one-mean': self.sparse_all_in_one_forward, 'GPF': self.gpf_forward,
                              'GPF-plus': self.gpf_plus_forward, 'Gprompt': self.gprompt_forward,
                              'GPF-GNN': self.gpf_gnn_forward, 'Gprompt-GNN': self.gprompt_gnn_forward}
 
         self.surrogate_prompt_forward_func = forward_func_dict[surrogate_prompt]
-    
+
     def gpf_gnn_forward(self, features, adj_norm):
         prompted_features = features + self.weights[0]
         support1 = torch.mm(prompted_features, self.weights[1])
-        output1 = torch.mm(adj_norm, support1)      
+        output1 = torch.mm(adj_norm, support1)
         support2 = torch.mm(output1, self.weights[2])
-        output2= torch.mm(adj_norm, support2)
+        output2 = torch.mm(adj_norm, support2)
 
-        hidden = output2 @ self.weights[3] + self.weights[4]     
+        hidden = output2 @ self.weights[3] + self.weights[4]
         return hidden, 0
 
     def gprompt_gnn_forward(self, features, adj_norm):
         support1 = torch.mm(features, self.weights[1])
-        output1 = torch.mm(adj_norm, support1)      
+        output1 = torch.mm(adj_norm, support1)
         support2 = torch.mm(output1, self.weights[2])
-        output2= torch.mm(adj_norm, support2)
+        output2 = torch.mm(adj_norm, support2)
         prompted_hidden = output2 * self.weights[0]
 
-        hidden = prompted_hidden @ self.weights[3] + self.weights[4]     
+        hidden = prompted_hidden @ self.weights[3] + self.weights[4]
         return hidden, 0
-
 
     def two_views_forward(self, features, adj_norm):
         prompted_features = features + self.weights[0]
@@ -515,22 +518,23 @@ class MetaGpro_Approx(BasePrompt):
 
         hidden = 1 / 2 * (prompted_hidden1 + prompted_hidden2) @ self.weights[2] + self.weights[3]
 
-        loss_agreement_infomax = F.mse_loss(prompted_hidden1, prompted_hidden2)  # only consider positive example, its no need to push one away from another
+        loss_agreement_infomax = F.mse_loss(prompted_hidden1,
+                                            prompted_hidden2)  # only consider positive example, its no need to push one away from another
         return hidden, loss_agreement_infomax
 
     def smooth_all_in_one_forward(self, features, adj_norm):
-        weight = torch.mm(features, torch.transpose(self.weights[0], 0, 1))     # (n_nodes, token_nums)
+        weight = torch.mm(features, torch.transpose(self.weights[0], 0, 1))  # (n_nodes, token_nums)
         weight = torch.softmax(weight, dim=1)
-        weighted_prompt_tokens = torch.mm(weight, self.weights[0])    # (n_nodes, input_dim)
+        weighted_prompt_tokens = torch.mm(weight, self.weights[0])  # (n_nodes, input_dim)
 
-        prompted_features = features  + weighted_prompt_tokens
+        prompted_features = features + weighted_prompt_tokens
         prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
 
         hidden = prompted_hidden @ self.weights[1] + self.weights[2]
         return hidden, 0
 
     def sparse_all_in_one_forward(self, features, adj_norm):
-        #assert 0.4 <= threshold <= 1, "In Sparse-All-in-one, default 0.4<= threshold <=1"
+        # assert 0.4 <= threshold <= 1, "In Sparse-All-in-one, default 0.4<= threshold <=1"
         weight = torch.mm(features, torch.transpose(self.weights[0], 0, 1))  # (n_nodes, token_nums)
         weight = torch.sigmoid(weight)
         mask = weight < self.all_in_one_threshold
@@ -550,7 +554,7 @@ class MetaGpro_Approx(BasePrompt):
 
     def all_in_one_forward(self, features, adj_norm):
         # use 'sparse all_in_one',which has adventages of speed, flexibility, Stable gradient descent process
-        #assert 0 <= threshold <= 1, "please set 0<=threshold<=1"
+        # assert 0 <= threshold <= 1, "please set 0<=threshold<=1"
 
         weight = torch.mm(features, torch.transpose(self.weights[0], 0, 1))  # (n_nodes, token_nums)
         weight = torch.sigmoid(weight)
@@ -592,7 +596,8 @@ class MetaGpro_Approx(BasePrompt):
         return hidden, 0
 
     def plot_acc_during_training(self):
-        print("Warning: In general, graph Prompt learning converges more slowly than learning of GNNs,so observing acc after fewer iterations is less accurate")
+        print(
+            "Warning: In general, graph Prompt learning converges more slowly than learning of GNNs,so observing acc after fewer iterations is less accurate")
         if not os.path.exists("./result"):
             os.makedirs("./result")
         x = np.arange(0, self.n_perturbations)
@@ -612,20 +617,19 @@ class MetaGpro_Approx(BasePrompt):
         save_file_name = f"MetaGpro_for_{self.target_dataset}_with_{self.n_perturbations}.png"
         path = os.path.join("./result", save_file_name)
         plt.savefig(path)
-    
+
     def save_train_loss(self):
         train_loss = np.array(self.train_loss_list)
-        folder_path = "./result"+ "/" + self.surrogate_prompt
+        folder_path = "./result" + "/" + self.surrogate_prompt
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
         if self.surrogate_prompt in ['All-in-one', 'All-in-one-mean', 'All-in-one-softmax']:
-            file_name = f"train_loss_{self.target_dataset}_{self.surrogate_prompt}_{str(self.token_num)+'token_num'}+{str(self.all_in_one_threshold)+'threshold'}.npy"
+            file_name = f"train_loss_{self.target_dataset}_{self.surrogate_prompt}_{str(self.token_num) + 'token_num'}+{str(self.all_in_one_threshold) + 'threshold'}.npy"
         else:
-            file_name = f"train_loss_{self.target_dataset}_{self.surrogate_prompt}_{str(self.token_num)+'token_num'}.npy"
+            file_name = f"train_loss_{self.target_dataset}_{self.surrogate_prompt}_{str(self.token_num) + 'token_num'}.npy"
         file_path = os.path.join(folder_path, file_name)
         np.save(file_path, train_loss)
-
 
     def Retrain_and_test(self):
         """
@@ -647,7 +651,7 @@ class MetaGpro_Approx(BasePrompt):
             loss_labeled.backward()
             self.optimizer.step()
 
-            #self.train_loss_list.append(loss_labeled.item())
+            # self.train_loss_list.append(loss_labeled.item())
             if train_loss_min > loss_labeled:
                 train_loss_min = loss_labeled
                 cnt_wait = 0
@@ -665,10 +669,11 @@ class MetaGpro_Approx(BasePrompt):
 
 
 class MetaGpro(BasePrompt):
-    def __init__(self, train_iters: int = 100, lr: float = 0.01, lambda_: float = 0.5,budget: float = 0.05, 
-                save_fold_path="/root/autodl-tmp/deeprobust", surrogate_token_num=10, surrogate_prompt='Two-views',attack_loss='CE', 
-                aug_ratio=0.2, all_in_one_threshold=0.5,  lenda_1=0.0, lenda_2=0.4, vic_coef1=1.0, vic_coef2=1.0,
-                vic_coef3=0.04, *arg, **kwargs):
+    def __init__(self, train_iters: int = 100, lr: float = 0.01, lambda_: float = 0.5, budget: float = 0.05,
+                 save_fold_path="/root/autodl-tmp/deeprobust", surrogate_token_num=10, surrogate_prompt='Two-views',
+                 attack_loss='CE',
+                 aug_ratio=0.2, all_in_one_threshold=0.5, lenda_1=0.0, lenda_2=0.4, vic_coef1=1.0, vic_coef2=1.0,
+                 vic_coef3=0.04, *arg, **kwargs):
         super(MetaGpro, self).__init__(*arg, **kwargs)
 
         self.beta1 = 0.9
@@ -731,14 +736,14 @@ class MetaGpro(BasePrompt):
         self._initialize()
 
     def _initialize(self):
-        
+
         for w, m, v in zip(self.weights, self.weights_m, self.weights_v):
             glorot(w)
             m.data.fill_(0)
             v.data.fill_(0)
 
-    def cut_initialize(self):   # If the beginning of inner training is not stable, use this func
-        for w, c, m, v in zip(self.weights,self.weights_cut, self.weights_m, self.weights_v):
+    def cut_initialize(self):  # If the beginning of inner training is not stable, use this func
+        for w, c, m, v in zip(self.weights, self.weights_cut, self.weights_m, self.weights_v):
             w = c
             m.data.fill_(0)
             v.data.fill_(0)
@@ -756,13 +761,13 @@ class MetaGpro(BasePrompt):
             loss_labeled = F.nll_loss(output[self.train_mask == 1], self.y[self.train_mask == 1])
             loss_labeled.backward()
             optimizer.step()
-    
+
             if j == 99:
                 print(loss_labeled)
                 for ix in range(len(self.weights)):
-                    self.weights_cut.append(self.weights[ix].data)  
+                    self.weights_cut.append(self.weights[ix].data)
 
-            #self.train_loss_list.append(loss_labeled.item())
+                    # self.train_loss_list.append(loss_labeled.item())
             if train_loss_min > loss_labeled:
                 train_loss_min = loss_labeled
                 cnt_wait = 0
@@ -774,14 +779,15 @@ class MetaGpro(BasePrompt):
         accuracy = Accuracy(num_classes=self.out_dim, task='multiclass').to(self.device)
         labeled_data_acc = accuracy(output[self.train_mask == 1], self.y[self.train_mask == 1]).item()
         unlabeld_data_acc = accuracy(output[self.val_mask == 1], self.y[self.val_mask == 1]).item()
-        print("you can use self-training to judge whether the hyper-parameter settings, such as lr, are reasonable or not")
+        print(
+            "you can use self-training to judge whether the hyper-parameter settings, such as lr, are reasonable or not")
         print("self-training acc on labeld_data:", labeled_data_acc)
         print("self-training acc on val_data:", unlabeld_data_acc)
 
         self.y_self_training = output.argmax(1)
         self.y_self_training[self.train_mask == 1] = self.y[self.train_mask == 1]
 
-        #print(self.train_loss_list)
+        # print(self.train_loss_list)
         """print(self.train_loss_list)
         train_loss = np.array(self.train_loss_list)
         folder_path = "./result"
@@ -790,7 +796,7 @@ class MetaGpro(BasePrompt):
 
     def inner_train(self, features, modified_adj):
         "we find momentum in Mettack can't learn prompt well, so we use trick in MetaApprox"
-        #self._initialize()
+        # self._initialize()
         self.cut_initialize()
         adj_norm = self.normalize_adj_tensor(modified_adj)
         iter_ = 0
@@ -798,7 +804,7 @@ class MetaGpro(BasePrompt):
                             self.undirected, self.device, self.token_num, self.vic_coef1, self.vic_coef2,
                             self.vic_coef3,
                             self.aug_ratio, 0.1)
-                            
+
         for ix in range(len(self.weights)):
             self.weights[ix] = self.weights[ix].detach()
             self.weights[ix].requires_grad = True
@@ -814,7 +820,7 @@ class MetaGpro(BasePrompt):
                 weight_datas = []
                 for weight in self.weights:
                     weight_datas.append(weight.data)
-                if j % 5 ==0:  # 每个循环都forward效率有点低 Forwarding every loop is inefficient
+                if j % 5 == 0:  # 每个循环都forward效率有点低 Forwarding every loop is inefficient
                     viewlearner.viewer_train_forward(weight_datas, hidden.data)
                 loss_cons = viewlearner.viewer_eval_forward(self.weights, hidden)
             else:
@@ -825,25 +831,24 @@ class MetaGpro(BasePrompt):
             loss_labeled = F.nll_loss(output[self.train_mask == 1], self.y[self.train_mask == 1])
             loss_unlabeled = F.nll_loss(output[self.train_mask == 0], self.y_self_training[self.train_mask == 0])
             loss_surrogate = loss_labeled + self.lenda_1 * loss_agreement_infomax + self.lenda_2 * loss_cons
-            
-            iter_ += 1
-            lr_t = self.lr * math.sqrt(1.0 - self.beta2**iter_) / (1.0 - self.beta1**iter_)
-            
-            weight_grads = torch.autograd.grad(loss_surrogate, self.weights)
-            self.weights_m = [ m + (1 - self.beta1) * (g - m) for m, g in zip(self.weights_m, weight_grads)]
-            self.weights_v = [ v + (1 - self.beta2) * (g**2 - v) for v, g in zip(self.weights_v, weight_grads)]
-            self.weights = [w - lr_t * m / (torch.sqrt(v) + 1e-8) for w, m, v in zip(self.weights, self.weights_m, self.weights_v)]
 
-    
+            iter_ += 1
+            lr_t = self.lr * math.sqrt(1.0 - self.beta2 ** iter_) / (1.0 - self.beta1 ** iter_)
+
+            weight_grads = torch.autograd.grad(loss_surrogate, self.weights)
+            self.weights_m = [m + (1 - self.beta1) * (g - m) for m, g in zip(self.weights_m, weight_grads)]
+            self.weights_v = [v + (1 - self.beta2) * (g ** 2 - v) for v, g in zip(self.weights_v, weight_grads)]
+            self.weights = [w - lr_t * m / (torch.sqrt(v) + 1e-8) for w, m, v in
+                            zip(self.weights, self.weights_m, self.weights_v)]
 
     def get_meta_grad(self, features, modified_adj):
         adj_norm = self.normalize_adj_tensor(modified_adj)
-        
+
         hidden, _ = self.surrogate_prompt_forward_func(features, adj_norm)
         output = F.log_softmax(hidden, dim=1)
 
-        loss_labeled = self.attack_loss_func(output, self.y, self.train_mask==1)
-        loss_unlabeled = self.attack_loss_func(output, self.y_self_training, self.train_mask==0)
+        loss_labeled = self.attack_loss_func(output, self.y, self.train_mask == 1)
+        loss_unlabeled = self.attack_loss_func(output, self.y_self_training, self.train_mask == 0)
 
         if self.lambda_ == 1:
             attack_loss = loss_labeled
@@ -853,8 +858,8 @@ class MetaGpro(BasePrompt):
             attack_loss = self.lambda_ * loss_labeled + (1 - self.lambda_) * loss_unlabeled
 
         accuracy = Accuracy(num_classes=self.out_dim, task='multiclass').to(self.device)
-        labeled_data_acc = accuracy(output[self.train_mask==1], self.y[self.train_mask==1]).item()
-        unlabeld_data_acc = accuracy(output[self.val_mask==1], self.y[self.val_mask==1]).item()
+        labeled_data_acc = accuracy(output[self.train_mask == 1], self.y[self.train_mask == 1]).item()
+        unlabeld_data_acc = accuracy(output[self.val_mask == 1], self.y[self.val_mask == 1]).item()
         self.train_acc_list.append(labeled_data_acc)
         self.val_acc_list.append(unlabeld_data_acc)
 
@@ -874,7 +879,7 @@ class MetaGpro(BasePrompt):
         self.self_training(modified_features, modified_adj)
 
         for i in tqdm(range(self.n_perturbations), desc="Perturbing graph"):
-            #self._initialize()
+            # self._initialize()
             if self.attack_structure:
                 modified_adj = self.get_modified_adj()
                 self.adj_grad_sum.data.fill_(0)
@@ -945,7 +950,7 @@ class MetaGpro(BasePrompt):
 
         return torch.tanh(-margin).mean()
 
-    def Bias_Tanh_loss(self, logits, labels, index, k=0.5):   
+    def Bias_Tanh_loss(self, logits, labels, index, k=0.5):
         sorted = logits.argsort(-1)
         best_non_target_class = sorted[sorted != labels[:, None]].reshape(logits.size(0), -1)[:, -1]
         margin = (
@@ -954,7 +959,7 @@ class MetaGpro(BasePrompt):
         )
 
         loss1 = torch.tanh(-margin[margin >= 0])
-        loss2 = k * torch.tanh(k * -margin[margin < 0])      # we find this better than one in the papar
+        loss2 = k * torch.tanh(k * -margin[margin < 0])  # we find this better than one in the papar
         loss = torch.cat([loss1, loss2])
 
         return loss.mean()
@@ -971,7 +976,7 @@ class MetaGpro(BasePrompt):
         gnn_weight2 = None
         if surrogate_prompt == 'Two-views':
             prompt_token1 = torch.nn.Parameter(torch.Tensor(1, self.input_dim).to(self.device))  # "GPF"  tokens
-            prompt_token2 = torch.nn.Parameter(torch.Tensor(1, self.hid_dim).to(self.device))    # "GraphPrompt" tokens
+            prompt_token2 = torch.nn.Parameter(torch.Tensor(1, self.hid_dim).to(self.device))  # "GraphPrompt" tokens
 
         elif surrogate_prompt in ['All-in-one', 'All-in-one-mean', 'All-in-one-softmax']:
             prompt_token1 = torch.nn.Parameter(torch.Tensor(self.token_num, self.input_dim).to(self.device))
@@ -997,40 +1002,39 @@ class MetaGpro(BasePrompt):
             gnn_weight1 = torch.nn.Parameter(torch.Tensor(self.input_dim, self.hid_dim).to(self.device))
             gnn_weight2 = torch.nn.Parameter(torch.Tensor(self.hid_dim, self.hid_dim).to(self.device))
 
-
         self.weights.append(prompt_token1)
 
         for weight in [prompt_token2, gnn_weight1, gnn_weight2]:
             if weight is not None:
                 self.weights.append(weight)
 
-        forward_func_dict = {'Two-views': self.two_views_forward, 'All-in-one': self.all_in_one_forward,'All-in-one-softmax':self.smooth_all_in_one_forward,
+        forward_func_dict = {'Two-views': self.two_views_forward, 'All-in-one': self.all_in_one_forward,
+                             'All-in-one-softmax': self.smooth_all_in_one_forward,
                              'All-in-one-mean': self.sparse_all_in_one_forward, 'GPF': self.gpf_forward,
                              'GPF-plus': self.gpf_plus_forward, 'Gprompt': self.gprompt_forward,
                              'GPF-GNN': self.gpf_gnn_forward, 'Gprompt-GNN': self.gprompt_gnn_forward}
 
         self.surrogate_prompt_forward_func = forward_func_dict[surrogate_prompt]
-    
+
     def gpf_gnn_forward(self, features, adj_norm):
         prompted_features = features + self.weights[0]
         support1 = torch.mm(prompted_features, self.weights[1])
-        output1 = torch.mm(adj_norm, support1)      
+        output1 = torch.mm(adj_norm, support1)
         support2 = torch.mm(output1, self.weights[2])
-        output2= torch.mm(adj_norm, support2)
+        output2 = torch.mm(adj_norm, support2)
 
-        hidden = output2 @ self.weights[3] + self.weights[4]     
+        hidden = output2 @ self.weights[3] + self.weights[4]
         return hidden, 0
 
     def gprompt_gnn_forward(self, features, adj_norm):
         support1 = torch.mm(features, self.weights[1])
-        output1 = torch.mm(adj_norm, support1)      
+        output1 = torch.mm(adj_norm, support1)
         support2 = torch.mm(output1, self.weights[2])
-        output2= torch.mm(adj_norm, support2)
+        output2 = torch.mm(adj_norm, support2)
         prompted_hidden = output2 * self.weights[0]
 
-        hidden = prompted_hidden @ self.weights[3] + self.weights[4]     
+        hidden = prompted_hidden @ self.weights[3] + self.weights[4]
         return hidden, 0
-
 
     def two_views_forward(self, features, adj_norm):
         prompted_features = features + self.weights[0]
@@ -1041,22 +1045,23 @@ class MetaGpro(BasePrompt):
 
         hidden = 1 / 2 * (prompted_hidden1 + prompted_hidden2) @ self.weights[2] + self.weights[3]
 
-        loss_agreement_infomax = F.mse_loss(prompted_hidden1, prompted_hidden2)  # only consider positive example, its no need to push one away from another
+        loss_agreement_infomax = F.mse_loss(prompted_hidden1,
+                                            prompted_hidden2)  # only consider positive example, its no need to push one away from another
         return hidden, loss_agreement_infomax
 
     def smooth_all_in_one_forward(self, features, adj_norm):
-        weight = torch.mm(features, torch.transpose(self.weights[0], 0, 1))     # (n_nodes, token_nums)
+        weight = torch.mm(features, torch.transpose(self.weights[0], 0, 1))  # (n_nodes, token_nums)
         weight = torch.softmax(weight, dim=1)
-        weighted_prompt_tokens = torch.mm(weight, self.weights[0])    # (n_nodes, input_dim)
+        weighted_prompt_tokens = torch.mm(weight, self.weights[0])  # (n_nodes, input_dim)
 
-        prompted_features = features  + weighted_prompt_tokens
+        prompted_features = features + weighted_prompt_tokens
         prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
 
         hidden = prompted_hidden @ self.weights[1] + self.weights[2]
         return hidden, 0
-        
+
     def sparse_all_in_one_forward(self, features, adj_norm):
-        #assert 0.4 <= threshold <= 1, "In All-in-one-mean, default 0.4<= threshold <=1"
+        # assert 0.4 <= threshold <= 1, "In All-in-one-mean, default 0.4<= threshold <=1"
 
         weight = torch.mm(features, torch.transpose(self.weights[0], 0, 1))  # (n_nodes, token_nums)
         weight = torch.sigmoid(weight)
@@ -1077,7 +1082,7 @@ class MetaGpro(BasePrompt):
 
     def all_in_one_forward(self, features, adj_norm):
         # use 'sparse all_in_one',which has adventages of speed, flexibility, Stable gradient descent process
-        #assert 0 <= threshold <= 1, "please set 0<=threshold<=1"
+        # assert 0 <= threshold <= 1, "please set 0<=threshold<=1"
 
         weight = torch.mm(features, torch.transpose(self.weights[0], 0, 1))  # (n_nodes, token_nums)
         weight = torch.sigmoid(weight)
@@ -1119,7 +1124,8 @@ class MetaGpro(BasePrompt):
         return hidden, 0
 
     def plot_acc_during_training(self):
-        print("Warning: In general, graph Prompt learning converges more slowly than learning of GNNs,so observing acc after fewer iterations is less accurate")
+        print(
+            "Warning: In general, graph Prompt learning converges more slowly than learning of GNNs,so observing acc after fewer iterations is less accurate")
         if not os.path.exists("./result"):
             os.makedirs("./result")
         x = np.arange(0, self.n_perturbations)
@@ -1142,17 +1148,16 @@ class MetaGpro(BasePrompt):
 
     def save_train_loss(self):
         train_loss = np.array(self.train_loss_list)
-        folder_path = "./result"+ "/" + self.surrogate_prompt
+        folder_path = "./result" + "/" + self.surrogate_prompt
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
         if self.surrogate_prompt in ['All-in-one', 'All-in-one-mean', 'All-in-one-softmax']:
-            file_name = f"train_loss_{self.target_dataset}_{self.surrogate_prompt}_{str(self.token_num)+'token_num'}+{str(self.all_in_one_threshold)+'threshold'}.npy"
+            file_name = f"train_loss_{self.target_dataset}_{self.surrogate_prompt}_{str(self.token_num) + 'token_num'}+{str(self.all_in_one_threshold) + 'threshold'}.npy"
         else:
-            file_name = f"train_loss_{self.target_dataset}_{self.surrogate_prompt}_{str(self.token_num)+'token_num'}.npy"
+            file_name = f"train_loss_{self.target_dataset}_{self.surrogate_prompt}_{str(self.token_num) + 'token_num'}.npy"
         file_path = os.path.join(folder_path, file_name)
         np.save(file_path, train_loss)
-
 
     def Retrain_and_test(self):
         """
@@ -1193,26 +1198,26 @@ class MetaGpro(BasePrompt):
         print("self-training acc on test_data:", unlabeld_data_acc)
 
 
-
 def Test():
     # surrogate_prompt_list = ['Two-views', 'All-in-one', 'All-in-one-mean', 'All-in-one-softmax', 'GPF', 'GPF-plus', 'Gprompt', 'GPF-GNN', 'Gprompt-GNN']
     # attack_loss_list = ['CE','MCE','Tanh','Bias_Tanh', 'GraD']
     for target_dataset in ['Cora', 'CiteSeer', 'PubMed', 'Photo', 'Computers']:
         if target_dataset in ['Cora', 'CiteSeer', 'PubMed']:
             seed_everything(42)
-            model = MetaGpro(pretrain_dataset='PubMed',target_dataset=target_dataset, surrogate_prompt='GPF', 
-                            token_num=10, lr=0.1, train_iters=100, lenda_2=0.0, budget=0.001)
+            model = MetaGpro(pretrain_dataset='PubMed', target_dataset=target_dataset, surrogate_prompt='GPF',
+                             token_num=10, lr=0.1, train_iters=100, lenda_2=0.0, budget=0.001)
             model.attack()
-            #model.visualize_topology_attack_influence()
+            # model.visualize_topology_attack_influence()
         else:
             seed_everything(42)
-            model = MetaGpro(pretrain_dataset='Computers',target_dataset=target_dataset, surrogate_prompt='GPF', all_in_one_threshold=0.7,
-                            token_num=10, lr=0.1, train_iters=100, lenda_2=0.0, budget=0.001)
-            
+            model = MetaGpro(pretrain_dataset='Computers', target_dataset=target_dataset, surrogate_prompt='GPF',
+                             all_in_one_threshold=0.7,
+                             token_num=10, lr=0.1, train_iters=100, lenda_2=0.0, budget=0.001)
+
             model.attack()
-            #model.visualize_topology_attack_influence()
-    #model.visualize_topology_attack_tendency()
-    #model.plot_acc_during_training()
+            # model.visualize_topology_attack_influence()
+    # model.visualize_topology_attack_tendency()
+    # model.plot_acc_during_training()
 
 
 if __name__ == '__main__':

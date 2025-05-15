@@ -14,14 +14,14 @@ class PRBCD:
                  undirected=True, device='cuda', token_num=None, vic_coef1=1.0, vic_coef2=1.0, vic_coef3=0.04,
                  aug_ratio=0.1, lr_adj=0.1, do_synchronize=True):
 
-
         self.features = features
         self.adj = adj
 
         self.gnn_model = gnn_model
         self.gnn_model.eval()
 
-        forward_func_dict = {'Two-views': self.two_views_forward, 'All-in-one': self.all_in_one_forward, 'All-in-one-softmax':self.smooth_all_in_one_forward,
+        forward_func_dict = {'Two-views': self.two_views_forward, 'All-in-one': self.all_in_one_forward,
+                             'All-in-one-softmax': self.smooth_all_in_one_forward,
                              'All-in-one-mean': self.sparse_all_in_one_forward, 'GPF': self.gpf_forward,
                              'GPF-plus': self.gpf_plus_forward, 'Gprompt': self.gprompt_forward,
                              'GPF-GNN': self.gpf_gnn_forward, 'Gprompt-GNN': self.gprompt_gnn_forward}
@@ -30,7 +30,7 @@ class PRBCD:
         self.train_mask = train_mask
         self.search_space_size = search_space_size
         self.undirected = undirected
-        
+
         if device == 'auto':
             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         else:
@@ -61,7 +61,7 @@ class PRBCD:
         else:
             self.n_possible_edges = self.nnodes ** 2  # We filter self-loops later
 
-        #self.with_early_stopping = with_early_stopping
+        # self.with_early_stopping = with_early_stopping
         self.do_synchronize = do_synchronize
 
         self.sample_random_block()
@@ -77,7 +77,7 @@ class PRBCD:
         # modified_adj_norm[modified_edge_index[0, :], modified_edge_index[1, :]] *= modified_edge_weight
 
         z2 = self.surrogate_forward_func(self.features, modified_adj_norm, weights)
-        
+
         z1 = z1[self.train_mask == 0]
         z2 = z2[self.train_mask == 0]
 
@@ -119,7 +119,7 @@ class PRBCD:
 
     def viewer_eval_forward(self, weights, z1):
         self.perturbed_edge_weight.requires_grad = False
-        
+
         modified_edge_index, modified_edge_weight = self.get_modified_adj()  # serve as augmentation view
         modified_adj = torch.zeros([self.nnodes, self.nnodes]).to(self.device)
         modified_adj[modified_edge_index[0, :], modified_edge_index[1, :]] = modified_edge_weight
@@ -328,21 +328,21 @@ class PRBCD:
     def gpf_gnn_forward(self, features, adj_norm, weights):
         prompted_features = features + weights[0]
         support1 = torch.mm(prompted_features, weights[1])
-        output1 = torch.mm(adj_norm, support1)      
+        output1 = torch.mm(adj_norm, support1)
         support2 = torch.mm(output1, weights[2])
-        output2= torch.mm(adj_norm, support2)
+        output2 = torch.mm(adj_norm, support2)
 
-        hidden = output2 @ weights[3] + weights[4]     
+        hidden = output2 @ weights[3] + weights[4]
         return hidden
 
     def gprompt_gnn_forward(self, features, adj_norm, weights):
         support1 = torch.mm(features, weights[1])
-        output1 = torch.mm(adj_norm, support1)      
+        output1 = torch.mm(adj_norm, support1)
         support2 = torch.mm(output1, weights[2])
-        output2= torch.mm(adj_norm, support2)
+        output2 = torch.mm(adj_norm, support2)
         prompted_hidden = output2 * weights[0]
 
-        hidden = output2 @ weights[3] + weights[4]     
+        hidden = output2 @ weights[3] + weights[4]
         return hidden
 
     def two_views_forward(self, features, adj_norm, weights):
@@ -385,13 +385,13 @@ class PRBCD:
 
         hidden = prompted_hidden @ weights[1] + weights[2]
         return hidden
-    
-    def smooth_all_in_one_forward(self, features, adj_norm, weights):
-        weight = torch.mm(features, torch.transpose(self.weights[0], 0, 1))     # (n_nodes, token_nums)
-        weight = torch.softmax(weight, dim=1)
-        weighted_prompt_tokens = torch.mm(weight, self.weights[0])    # (n_nodes, input_dim)
 
-        prompted_features = features  + weighted_prompt_tokens
+    def smooth_all_in_one_forward(self, features, adj_norm, weights):
+        weight = torch.mm(features, torch.transpose(self.weights[0], 0, 1))  # (n_nodes, token_nums)
+        weight = torch.softmax(weight, dim=1)
+        weighted_prompt_tokens = torch.mm(weight, self.weights[0])  # (n_nodes, input_dim)
+
+        prompted_features = features + weighted_prompt_tokens
         prompted_hidden = self.Linearized_GCN(prompted_features, adj_norm)
 
         hidden = prompted_hidden @ self.weights[1] + self.weights[2]
