@@ -2,6 +2,8 @@
 
 This is the official implementation of "Prompt as a Double-Edged Sword: A Dynamic Equilibrium Gradient-Assigned Attack against Graph Prompt Learning"
 
+Our attack scheme is named as MetaGpro.
+
 We will further fix the bugs, update the more robustness tests of GPL scenarios in the future.
 
 We refer to the <ins>DeepRobust</ins> library to build our attack baselines **src/** [https://github.com/DSE-MSU/DeepRobust](https://github.com/DSE-MSU/DeepRobust).
@@ -46,3 +48,7 @@ prompt_graph/utils: Other needed functions or classes
 Mettack: !python main/run.py --pretrain_type=GraphMAE --gnn_type=GraphTransformer --pretrain_dataset=PubMed --target_dataset=PubMed --Mettack_type=mettack
 
 MetaGpro: !python main/run.py --pretrain_type=GraphMAE --gnn_type=GraphTransformer --pretrain_dataset=PubMed --target_dataset=PubMed --Mettack_type=MetaGpro --surrogate_prompt=GPF
+
+** News
+
+* 🔥 **[2025/05/15]** MetaGpro has been accepted by [KDD2025](https://kdd2025.kdd.org/).
