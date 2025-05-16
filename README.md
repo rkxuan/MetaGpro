@@ -45,9 +45,11 @@ prompt_graph/utils: Other needed functions or classes
 
 ## Implementation  
 
-Mettack: !python main/run.py --pretrain_type=GraphMAE --gnn_type=GraphTransformer --pretrain_dataset=PubMed --target_dataset=PubMed --Mettack_type=mettack
+Mettack: 
+* `!python main/run.py --pretrain_type=GraphMAE --gnn_type=GraphTransformer --pretrain_dataset=PubMed --target_dataset=PubMed --Mettack_type=mettack`
 
-MetaGpro: !python main/run.py --pretrain_type=GraphMAE --gnn_type=GraphTransformer --pretrain_dataset=PubMed --target_dataset=PubMed --Mettack_type=MetaGpro --surrogate_prompt=GPF
+MetaGpro: 
+* `!python main/run.py --pretrain_type=GraphMAE --gnn_type=GraphTransformer --pretrain_dataset=PubMed --target_dataset=PubMed --Mettack_type=MetaGpro --surrogate_prompt=GPF`
 
 ## News
 
