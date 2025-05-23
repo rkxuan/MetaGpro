@@ -447,39 +447,6 @@ class MetaGpro_Approx(BasePrompt):
         prompt_token2 = None
         gnn_weight1 = None
         gnn_weight2 = None
-        if surrogate_prompt == 'Two-views':
-            prompt_token1 = torch.nn.Parameter(torch.Tensor(1, self.input_dim).to(self.device))  # "GPF"  tokens
-            prompt_token2 = torch.nn.Parameter(torch.Tensor(1, self.hid_dim).to(self.device))  # "GraphPrompt" tokens
-
-        elif surrogate_prompt in ['All-in-one', 'All-in-one-mean', 'All-in-one-softmax']:
-            prompt_token1 = torch.nn.Parameter(torch.Tensor(self.token_num, self.input_dim).to(self.device))
-
-        elif surrogate_prompt == 'Gprompt':
-            prompt_token1 = torch.nn.Parameter(torch.Tensor(1, self.hid_dim).to(self.device))
-
-
-        elif surrogate_prompt == 'GPF':
-            prompt_token1 = torch.nn.Parameter(torch.Tensor(1, self.input_dim).to(self.device))
-
-        elif surrogate_prompt == 'GPF-plus':
-            prompt_token1 = torch.nn.Parameter(torch.Tensor(self.input_dim, self.token_num).to(self.device))
-            prompt_token2 = torch.nn.Parameter(torch.Tensor(self.token_num, self.input_dim).to(self.device))
-
-        elif surrogate_prompt == 'GPF-GNN':
-            prompt_token1 = torch.nn.Parameter(torch.Tensor(1, self.input_dim).to(self.device))
-            gnn_weight1 = torch.nn.Parameter(torch.Tensor(self.input_dim, self.hid_dim).to(self.device))
-            gnn_weight2 = torch.nn.Parameter(torch.Tensor(self.hid_dim, self.hid_dim).to(self.device))
-
-        elif surrogate_prompt == 'Gprompt-GNN':
-            prompt_token1 = torch.nn.Parameter(torch.Tensor(1, self.hid_dim).to(self.device))
-            gnn_weight1 = torch.nn.Parameter(torch.Tensor(self.input_dim, self.hid_dim).to(self.device))
-            gnn_weight2 = torch.nn.Parameter(torch.Tensor(self.hid_dim, self.hid_dim).to(self.device))
-
-        self.weights.append(prompt_token1)
-
-        for weight in [prompt_token2, gnn_weight1, gnn_weight2]:
-            if weight is not None:
-                self.weights.append(weight)
 
         forward_func_dict = {'Two-views': self.two_views_forward, 'All-in-one': self.all_in_one_forward,
                              'All-in-one-softmax': self.smooth_all_in_one_forward,
@@ -974,40 +941,7 @@ class MetaGpro(BasePrompt):
         prompt_token2 = None
         gnn_weight1 = None
         gnn_weight2 = None
-        if surrogate_prompt == 'Two-views':
-            prompt_token1 = torch.nn.Parameter(torch.Tensor(1, self.input_dim).to(self.device))  # "GPF"  tokens
-            prompt_token2 = torch.nn.Parameter(torch.Tensor(1, self.hid_dim).to(self.device))  # "GraphPrompt" tokens
-
-        elif surrogate_prompt in ['All-in-one', 'All-in-one-mean', 'All-in-one-softmax']:
-            prompt_token1 = torch.nn.Parameter(torch.Tensor(self.token_num, self.input_dim).to(self.device))
-
-        elif surrogate_prompt == 'Gprompt':
-            prompt_token1 = torch.nn.Parameter(torch.Tensor(1, self.hid_dim).to(self.device))
-
-
-        elif surrogate_prompt == 'GPF':
-            prompt_token1 = torch.nn.Parameter(torch.Tensor(1, self.input_dim).to(self.device))
-
-        elif surrogate_prompt == 'GPF-plus':
-            prompt_token1 = torch.nn.Parameter(torch.Tensor(self.input_dim, self.token_num).to(self.device))
-            prompt_token2 = torch.nn.Parameter(torch.Tensor(self.token_num, self.input_dim).to(self.device))
-
-        elif surrogate_prompt == 'GPF-GNN':
-            prompt_token1 = torch.nn.Parameter(torch.Tensor(1, self.input_dim).to(self.device))
-            gnn_weight1 = torch.nn.Parameter(torch.Tensor(self.input_dim, self.hid_dim).to(self.device))
-            gnn_weight2 = torch.nn.Parameter(torch.Tensor(self.hid_dim, self.hid_dim).to(self.device))
-
-        elif surrogate_prompt == 'Gprompt-GNN':
-            prompt_token1 = torch.nn.Parameter(torch.Tensor(1, self.hid_dim).to(self.device))
-            gnn_weight1 = torch.nn.Parameter(torch.Tensor(self.input_dim, self.hid_dim).to(self.device))
-            gnn_weight2 = torch.nn.Parameter(torch.Tensor(self.hid_dim, self.hid_dim).to(self.device))
-
-        self.weights.append(prompt_token1)
-
-        for weight in [prompt_token2, gnn_weight1, gnn_weight2]:
-            if weight is not None:
-                self.weights.append(weight)
-
+   
         forward_func_dict = {'Two-views': self.two_views_forward, 'All-in-one': self.all_in_one_forward,
                              'All-in-one-softmax': self.smooth_all_in_one_forward,
                              'All-in-one-mean': self.sparse_all_in_one_forward, 'GPF': self.gpf_forward,
