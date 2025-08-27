@@ -52,5 +52,5 @@ MetaGpro:
 * `!python main/run.py --pretrain_type=GraphMAE --gnn_type=GraphTransformer --pretrain_dataset=PubMed --target_dataset=PubMed --Mettack_type=MetaGpro --surrogate_prompt=GPF`
 
 ## News
-
+* 🔥 **[2025/08/10]** Our paper is available at [KDD2025](https://dl.acm.org/doi/abs/10.1145/3711896.3737091).
 * 🔥 **[2025/05/15]** MetaGpro has been accepted by [KDD2025](https://kdd2025.kdd.org/).
