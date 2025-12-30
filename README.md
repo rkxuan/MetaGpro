@@ -54,3 +54,13 @@ MetaGpro:
 ## News
 * 🔥 **[2025/08/10]** Our paper is available at [KDD2025](https://dl.acm.org/doi/abs/10.1145/3711896.3737091).
 * 🔥 **[2025/05/15]** MetaGpro has been accepted by [KDD2025](https://kdd2025.kdd.org/).
+
+## Citation  
+```bibtex
+@inproceedings{jia2025prompt,
+  title={Prompt as a double-edged sword: A dynamic equilibrium gradient-assigned attack against graph prompt learning},
+  author={Jia, Ju and Yu, Jingxuan and Wu, Di and Wu, Cong and Zhu, Hengjie and Wang, Lina},
+  booktitle={Proceedings of the 31st ACM SIGKDD Conference on Knowledge Discovery and Data Mining V. 2},
+  pages={1049--1060},
+  year={2025}
+}
